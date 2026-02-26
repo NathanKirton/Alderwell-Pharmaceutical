@@ -1,0 +1,227 @@
+/* GLOBAL RESET */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Inter", sans-serif;
+}
+
+body {
+    background: #F3F4F1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* MAIN WRAPPER */
+.wrapper {
+    display: flex;
+    width: 100%;
+    max-width: 1200px;
+    height: 100vh; /* ensures vertical centering works */
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+/* LEFT PANEL */
+.brand-panel {
+    width: 42%;
+    background: #ffffff;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 40px;
+}
+
+.brand-inner {
+    text-align: left;
+}
+
+.logo {
+    width: 500px; /* desktop size */
+    height: auto;
+}
+
+.brand-title {
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-top: 12px;
+}
+
+.brand-title span {
+    color: #C8D1C5;
+}
+
+/* RIGHT PANEL — FULLY CENTERED */
+.login-panel {
+    width: 58%;
+    display: flex;
+    justify-content: center;   /* horizontal centering */
+    align-items: center;       /* vertical centering */
+    padding: 0;                /* remove padding so centering is true */
+}
+
+.login-box {
+    width: 100%;
+    max-width: 380px;
+}
+
+/* HEADINGS */
+h2 {
+    font-size: 30px;
+    font-weight: 700;
+    color: #334D3F;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #6A6F6B;
+    margin-bottom: 32px;
+}
+
+/* FORM ELEMENTS */
+label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #334D3F;
+    margin-bottom: 6px;
+    display: block;
+}
+
+input[type="email"],
+input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #D9DED8;
+    border-radius: 6px;
+    background: #FAFAF8;
+    margin-bottom: 22px;
+    font-size: 14px;
+}
+
+.password-row {
+    position: relative;
+}
+
+.forgot {
+    position: absolute;
+    right: 0;
+    top: -20px;
+    font-size: 12px;
+    color: #334D3F;
+    text-decoration: none;
+}
+
+/* CHECKBOX */
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.checkbox-row label {
+    margin-left: 8px;
+    font-size: 14px;
+    color: #334D3F;
+}
+
+/* BUTTON */
+.btn {
+    width: 100%;
+    padding: 14px;
+    background: #334D3F;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-bottom: 24px;
+    transition: 0.2s;
+}
+
+.btn:hover {
+    background: #2A3F34;
+}
+
+/* TERMS */
+.terms {
+    font-size: 12px;
+    color: #6A6F6B;
+    line-height: 1.4;
+    margin-bottom: 20px;
+}
+
+.terms a {
+    color: #334D3F;
+    text-decoration: none;
+}
+
+/* COPYRIGHT */
+copyright {
+    font-size: 12px;
+    color: #6A6F6B;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+
+    @media (max-width: 900px) {
+
+    .login-panel {
+        width: 100%;
+        padding: 40px 24px;
+        justify-content: center;   /* keep centered horizontally */
+        align-items: flex-start;   /* natural top alignment */
+        height: auto;              /* prevents stretched layout */
+    }
+
+    .login-box {
+        width: 100%;
+        max-width: 380px;
+        margin-top: 20px;          /* optional breathing room */
+    }
+}
+
+    .wrapper {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .brand-panel {
+        width: 100%;
+        padding: 32px 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+
+    .brand-inner {
+        display: flex;
+        flex-direction: column;   /* forces stacking */
+        align-items: center;      /* centers logo + text */
+        justify-content: center;
+        width: 100%;
+    }
+
+    .logo {
+        width: 200px;             /* responsive mobile size */
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 12px;
+    }
+
+    .brand-title {
+        font-size: 26px;
+        line-height: 1.2;
+        text-align: center;       /* ensures text stays centered */
+    }
+
+
+}
