@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="Navigation.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <title>Marketing and Sales Dashboard</title>
+</head>
+<body>
+
+
+<div class="layout">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <img src="/Assets/Collab_Dev_Logo-.png" class="company-logo" alt="Logo">
+
+    <div class="topbar-right">
+      <button class="notif-btn">
+        <span class="notif-dot"></span>
+        <i style="font-size:24px" class="fa">&#xf0f3;</i>
+      </button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR (Desktop only) -->
+  <aside class="sidebar">
+    <nav class="sidebar-nav">
+  <a href="#" class="active" data-tab="dashboard">Dashboard</a>
+  <a href="#" data-tab="crm">CRM</a>
+  <a href="#" data-tab="interaction-log">Interaction Log</a>
+  <a href="#" data-tab="tasks">Tasks</a>
+  <a href="#" data-tab="campaigns">Campaigns</a>
+  <a href="#" data-tab="materials">Materials</a>
+</nav>
+
+    <div class="sidebar-profile">
+      <div class="profile-img"></div>
+      <div>
+        <p class="profile-name">Alex Morgan</p>
+        <p class="profile-role">Senior Specialist</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+  <h1 class="page-title">Sales & Mktg<br>Internal Portal</h1>
+
+  <input type="text" class="search" placeholder="Search clients, materials, tasks...">
+
+  <section id="dashboard" class="tab-content active">
+    <h2>Dashboard Overview</h2>
+    <p>Dashboard content goes here…</p>
+  </section>
+
+  <section id="crm" class="tab-content">
+    <h2>CRM</h2>
+    <p>CRM content goes here…</p>
+  </section>
+
+  <section id="interaction-log" class="tab-content">
+    <h2>Interaction Log</h2>
+    <p>Interaction log content goes here…</p>
+  </section>
+
+  <section id="tasks" class="tab-content">
+    <h2>Tasks</h2>
+    <p>Tasks content goes here…</p>
+  </section>
+
+  <section id="campaigns" class="tab-content">
+    <h2>Campaigns</h2>
+    <p>Campaigns content goes here…</p>
+  </section>
+
+  <section id="materials" class="tab-content">
+    <h2>Materials</h2>
+    <p>Materials content goes here…</p>
+  </section>
+</main>
+
+
+  <!-- MOBILE NAV (Mobile only) -->
+  <nav class="mobile-nav">
+      <a href="#" class="active">Dashboard</a>
+      <a href="#">CRM</a>
+      <a href="#">Interaction Log</a>
+      <a href="#">Tasks</a>
+      <a href="#">Campaigns</a>
+      <a href="#">Materials</a>
+  </nav>
+
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.sidebar-nav a');
+  const contents = document.querySelectorAll('.tab-content');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', e => {
+      e.preventDefault();
+
+      // Remove active from all tabs
+      tabs.forEach(t => t.classList.remove('active'));
+
+      // Add active to clicked tab
+      tab.classList.add('active');
+
+      // Hide all content sections
+      contents.forEach(c => c.classList.remove('active'));
+
+      // Show the matching section
+      const target = tab.getAttribute('data-tab');
+      document.getElementById(target).classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>

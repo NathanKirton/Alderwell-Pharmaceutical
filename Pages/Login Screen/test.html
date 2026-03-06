@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Supabase Test</title>
+</head>
+
+<body>
+
+<h2>Database Test</h2>
+<button id="testBtn">Test Connection</button>
+
+<pre id="result"></pre>
+
+<script type="module">
+
+import { supabase } from "../../js/supabaseClient.js"
+
+document.getElementById("testBtn").addEventListener("click", async () => {
+
+  const { data, error } = await supabase
+    .from("test_table")
+    .select("*")
+
+  console.log("DATA:", data)
+  console.log("ERROR:", error)
+  
+
+})
+
+</script>
+
+</body>
+</html>
