@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="Navigation.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <title>Nav Skeleton</title>
+</head>
+<body>
+
+<div class="layout">
+
+  <header class="topbar">
+    <img src="/Assets/Collab_Dev_Logo-.png" class="company-logo" alt="Logo">
+    <div class="topbar-right">
+      <button class="notif-btn">
+        <span class="notif-dot"></span>
+        <i style="font-size:24px" class="fa">&#xf0f3;</i>
+      </button>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <nav class="sidebar-nav">
+      <a href="#" class="active" data-tab="dashboard">Dashboard</a>
+      <a href="#" data-tab="crm">CRM</a>
+      <a href="#" data-tab="interaction-log">Interaction Log</a>
+      <a href="#" data-tab="tasks">Tasks</a>
+      <a href="#" data-tab="campaigns">Campaigns</a>
+      <a href="#" data-tab="materials">Materials</a>
+    </nav>
+
+    <div class="sidebar-profile">
+      <img id="profile-img" class="profile-img" src="/Assets/default-avatar.png" alt="Profile Picture">
+      <div>
+        <p class="profile-name">Alex Morgan</p>
+        <p class="profile-role">Senior Specialist</p>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1 class="page-title">Sales & Mktg<br>Internal Portal</h1>
+
+    <input type="text" class="search" placeholder="Search clients, materials, tasks...">
+
+    <section id="dashboard" class="tab-content active">
+      <h2>Dashboard Overview</h2>
+      <p>Dashboard content goes here…</p>
+    </section>
+
+    <section id="crm" class="tab-content">
+      <h2>CRM</h2>
+      <p>CRM content goes here…</p>
+    </section>
+
+    <section id="interaction-log" class="tab-content">
+      <h2>Interaction Log</h2>
+      <p>Interaction log content goes here…</p>
+    </section>
+
+    <section id="tasks" class="tab-content">
+      <h2>Tasks</h2>
+      <p>Tasks content goes here…</p>
+    </section>
+
+    <section id="campaigns" class="tab-content">
+      <h2>Campaigns</h2>
+      <p>Campaigns content goes here…</p>
+    </section>
+
+    <section id="materials" class="tab-content">
+      <h2>Materials</h2>
+      <p>Materials content goes here…</p>
+    </section>
+  </main>
+
+  <nav class="mobile-nav">
+      <a href="#" class="active">Dashboard</a>
+      <a href="#">CRM</a>
+      <a href="#">Interaction Log</a>
+      <a href="#">Tasks</a>
+      <a href="#">Campaigns</a>
+      <a href="#">Materials</a>
+  </nav>
+
+</div>
+
+<div id="avatar-modal" class="avatar-modal">
+  <div class="avatar-modal-content">
+    <h3>Upload Profile Picture</h3>
+
+    <div id="drop-area" class="drop-area">
+      <p>Drag & drop an image here<br>or click to select</p>
+      <input type="file" id="avatar-file" accept="image/*" hidden>
+    </div>
+
+    <button id="close-avatar-modal">Cancel</button>
+    <button id="upload-avatar-btn">Save</button>
+    
+
+    <p id="avatar-upload-status"></p>
+  </div>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.sidebar-nav a');
+  const contents = document.querySelectorAll('.tab-content');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', e => {
+      e.preventDefault();
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      contents.forEach(c => c.classList.remove('active'));
+      const target = tab.getAttribute('data-tab');
+      document.getElementById(target).classList.add('active');
+    });
+  });
+</script>
+
+<script type="module">
+import { supabase } from "../../js/supabaseClient.js";
+
+const nameEl = document.querySelector(".profile-name");
+const roleEl = document.querySelector(".profile-role");
+const imgEl = document.getElementById("profile-img");
+
+async function loadUserProfile() {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.error("No user session found");
+    return;
+  }
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("full_name, role, avatar_url")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.error("Profile fetch error:", error);
+    return;
+  }
+
+  nameEl.textContent = profile.full_name || "Unknown User";
+  roleEl.textContent = profile.role || "User";
+
+  if (profile.avatar_url) {
+    imgEl.src = profile.avatar_url;
+  }
+}
+
+loadUserProfile();
+
+const modal = document.getElementById("avatar-modal");
+const closeModal = document.getElementById("close-avatar-modal");
+const dropArea = document.getElementById("drop-area");
+const fileInput = document.getElementById("avatar-file");
+const uploadBtn = document.getElementById("upload-avatar-btn");
+const statusEl = document.getElementById("avatar-upload-status");
+
+let selectedFile = null;
+
+imgEl.addEventListener("click", () => {
+  modal.style.display = "flex";
+});
+
+closeModal.addEventListener("click", () => {
+  modal.style.display = "none";
+  statusEl.textContent = "";
+});
+
+dropArea.addEventListener("click", () => fileInput.click());
+dropArea.addEventListener("dragover", e => {
+  e.preventDefault();
+  dropArea.classList.add("dragover");
+});
+dropArea.addEventListener("dragleave", () => dropArea.classList.remove("dragover"));
+dropArea.addEventListener("drop", e => {
+  e.preventDefault();
+  dropArea.classList.remove("dragover");
+  selectedFile = e.dataTransfer.files[0];
+  dropArea.querySelector("p").textContent = selectedFile.name;
+});
+
+fileInput.addEventListener("change", () => {
+  selectedFile = fileInput.files[0];
+  dropArea.querySelector("p").textContent = selectedFile.name;
+});
+
+uploadBtn.addEventListener("click", async () => {
+  if (!selectedFile) {
+    statusEl.textContent = "Please select an image.";
+    return;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    statusEl.textContent = "Not logged in.";
+    return;
+  }
+
+  const ext = selectedFile.name.split(".").pop();
+  const fileName = `${user.id}-${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(fileName, selectedFile);
+
+  if (uploadError) {
+    statusEl.textContent = "Upload failed.";
+    return;
+  }
+
+  const { data: urlData } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(fileName);
+
+  const avatarUrl = urlData.publicUrl;
+
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({ avatar_url: avatarUrl })
+    .eq("id", user.id);
+
+  if (updateError) {
+    statusEl.textContent = "Failed to save avatar.";
+    return;
+  }
+
+  imgEl.src = avatarUrl;
+  statusEl.textContent = "Profile picture updated!";
+  modal.style.display = "none";
+});
+</script>
+
+</body>
+</html>

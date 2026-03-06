@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin – Manage User Roles</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+  <h1>Admin Panel</h1>
+  <h2>Manage User Roles</h2>
+
+  <table id="users-table">
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Current Role</th>
+        <th>Change Role</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <p id="status"></p>
+
+  <script type="module">
+    import { supabase } from "../../../js/supabaseClient.js";
+
+    const tbody = document.querySelector("#users-table tbody");
+    const status = document.getElementById("status");
+
+    // 1. Ensure only admins can see this page
+    async function guardAdmin() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.href = "/Pages/Login Screen/login.html";
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile || profile.role !== "admin") {
+        window.location.href = "/Pages/No-Role/No-Role.html";
+      }
+    }
+
+    // 2. Load all users (from profiles)
+    async function loadUsers() {
+      status.textContent = "Loading users...";
+
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("id, email, role")
+        .order("email", { ascending: true });
+
+      if (error) {
+        console.error(error);
+        status.textContent = "Failed to load users.";
+        return;
+      }
+
+      tbody.innerHTML = "";
+
+      profiles.forEach(profile => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${profile.email || "(no email)"}</td>
+          <td>${profile.role}</td>
+          <td>
+            <select data-user-id="${profile.id}">
+              <option value="no_role" ${profile.role === "no_role" ? "selected" : ""}>No Role</option>
+              <option value="admin" ${profile.role === "admin" ? "selected" : ""}>Admin</option>
+              <option value="marketing_sales" ${profile.role === "marketing_sales" ? "selected" : ""}>Marketing & Sales</option>
+              <option value="compliance_reviewer" ${profile.role === "compliance_reviewer" ? "selected" : ""}>Compliance Reviewer</option>
+              <option value="campaign_management" ${profile.role === "campaign_management" ? "selected" : ""}>Campaign Management</option>
+              <option value="liaison_officer" ${profile.role === "liaison_officer" ? "selected" : ""}>Liaison Officer</option>
+            </select>
+          </td>
+        `;
+
+        tbody.appendChild(row);
+      });
+
+      // Attach change handlers
+      document.querySelectorAll("select[data-user-id]").forEach(select => {
+        select.addEventListener("change", async (e) => {
+          const userId = e.target.getAttribute("data-user-id");
+          const newRole = e.target.value;
+
+          status.textContent = "Updating role...";
+
+          const { error } = await supabase
+          .from("profiles")
+          .update({ role: newRole })
+          .eq("id", userId);
+
+          if (error) {
+            console.error(error);
+            status.textContent = "Failed to update role.";
+          } else {
+            status.textContent = "Role updated successfully.";
+            // Reload to refresh "Current Role" column
+            loadUsers();
+          }
+        });
+      });
+
+      status.textContent = "Users loaded.";
+    }
+
+    // Run on page load
+    (async () => {
+      await guardAdmin();
+      await loadUsers();
+    })();
+  </script>
+</body>
+</html>
