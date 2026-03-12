@@ -18,6 +18,7 @@
         <span class="notif-dot"></span>
         <i style="font-size:24px" class="fa">&#xf0f3;</i>
       </button>
+      <button id="logout-btn" class="logout-btn">Logout</button>
     </div>
   </header>
 
@@ -628,6 +629,13 @@ uploadBtn.addEventListener("click", async () => {
   imgEl.src = avatarUrl;
   statusEl.textContent = "Profile picture updated!";
   modal.style.display = "none";
+});
+
+// LOGOUT HANDLER
+const logoutBtn = document.getElementById("logout-btn");
+logoutBtn.addEventListener("click", async () => {
+  await supabase.auth.signOut();
+  window.location.href = "/Pages/LoginSignupScreen/login.html";
 });
 </script>
 

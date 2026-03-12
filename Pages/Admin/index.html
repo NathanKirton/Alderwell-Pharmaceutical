@@ -6,7 +6,15 @@
 </head>
 
 <body>
-  <h1>Admin Panel</h1>
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1>Admin Panel</h1>
+    </div>
+    <div class="topbar-right">
+      <button id="logout-btn" class="logout-btn">Logout</button>
+    </div>
+  </header>
+  
   <h2>Manage User Roles</h2>
 
   <table id="users-table">
@@ -117,6 +125,13 @@
       await guardAdmin();
       await loadUsers();
     })();
+
+    // LOGOUT HANDLER
+    const logoutBtn = document.getElementById("logout-btn");
+    logoutBtn.addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      window.location.href = "/Pages/LoginSignupScreen/login.html";
+    });
   </script>
 </body>
 </html>

@@ -67,6 +67,26 @@ body {
   font-weight: 600;
 }
 
+.logout-btn {
+  padding: 8px 16px;
+  background: #E11D48;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.logout-btn:hover {
+  background: #C91140;
+}
+
+.logout-btn:active {
+  background: #A00E36;
+}
+
 /* SIDEBAR */
 .sidebar {
   width: 240px;

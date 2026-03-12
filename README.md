@@ -9,4 +9,3 @@ There is a folder "Login Screen" I have setup the supabase database for the logi
 
 Working on a role based dashboard?
 In the "Pages" file there is a skeleton for the navigation, dont edit in this file. Copy it and paste it in the needed location before you start coding, this is to keep the dashboard layout consistant between all roles. You should only need to code withing the "Main" Tags.
-Test
