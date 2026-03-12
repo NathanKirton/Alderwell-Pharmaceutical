@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="MarketingSales.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <title>Nav Skeleton</title>
+</head>
+<body>
+
+<div class="layout">
+
+  <header class="topbar">
+    <img src="/Assets/Collab_Dev_Logo-.png" class="company-logo" alt="Logo">
+    <div class="topbar-right">
+      <button class="notif-btn">
+        <span class="notif-dot"></span>
+        <i style="font-size:24px" class="fa">&#xf0f3;</i>
+      </button>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <nav class="sidebar-nav">
+      <a href="#" class="active" data-tab="dashboard">Dashboard</a>
+      <a href="#" data-tab="crm">CRM</a>
+      <a href="#" data-tab="interaction-log">Interaction Log</a>
+      <a href="#" data-tab="tasks">Tasks</a>
+      <a href="#" data-tab="campaigns">Campaigns</a>
+      <a href="#" data-tab="materials">Materials</a>
+    </nav>
+
+    <div class="sidebar-profile">
+      <img id="profile-img" class="profile-img" src="/Assets/default-avatar.png" alt="Profile Picture">
+      <div>
+        <p class="profile-name">Alex Morgan</p>
+        <p class="profile-role">Senior Specialist</p>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1 class="page-title">Sales & Mktg<br>Internal Portal</h1>
+
+    <input type="text" class="search" placeholder="Search clients, materials, tasks...">
+
+    <section id="dashboard" class="tab-content active">
+      <h2>Dashboard Overview</h2>
+       <div class="dashboard-grid">
+         <div class="dashboard-left">
+           <div class="quick-actions">
+             <div class="action-card">
+               <i class="fa fa-plus"></i>
+               <p>Log Interaction</p>
+             </div>
+             <div class="action-card">
+               <i class="fa fa-calendar"></i>
+               <p>Create Task</p>
+             </div>
+             <div class="action-card">
+               <i class="fa fa-users"></i>
+               <p>View Clients</p>
+             </div>
+           </div>
+
+           <div class="recent-activity">
+             <div class="activity-header">
+               <h3>Recent Activity</h3>
+               <a href="#">View all</a>
+             </div>
+             <div class="activity-item">
+               <div class="activity-icon email"><i class="fa fa-envelope-o"></i></div>
+               <div class="activity-details">
+                 <p><strong>Interaction logged with Dr. Smith</strong></p>
+                 <p>2 hours ago • Product: Rheumatic-X</p>
+               </div>
+             </div>
+             <div class="activity-item">
+               <div class="activity-icon task"><i class="fa fa-circle"></i></div>
+               <div class="activity-details">
+                 <p><strong>Follow-up task created</strong></p>
+                 <p>Yesterday • Central Hospital Procurement</p>
+               </div>
+             </div>
+             <div class="activity-item">
+               <div class="activity-icon download"><i class="fa fa-check"></i></div>
+               <div class="activity-details">
+                 <p><strong>Quarterly Q3 Materials downloaded</strong></p>
+                 <p>Sep 12, 2023 • Marketing Collateral</p>
+               </div>
+             </div>
+           </div>
+         </div>
+
+         <div class="dashboard-right">
+           <div class="pending-tasks">
+             <h3>Pending Tasks</h3>
+             <div class="task-item">
+               <input type="checkbox">
+               <div class="task-info">
+                 <p><strong>Review Q4 Sales Targets</strong></p>
+                 <span class="task-due">Due: Today</span>
+               </div>
+             </div>
+             <div class="task-item">
+               <input type="checkbox">
+               <div class="task-info">
+                 <p><strong>Email Dr. Aris follow-up</strong></p>
+                 <span class="task-due">Due: Tomorrow</span>
+               </div>
+             </div>
+             <div class="task-item">
+               <input type="checkbox">
+               <div class="task-info">
+                 <p><strong>Update CRM for North Clinic</strong></p>
+                 <span class="task-due">Due: Friday</span>
+               </div>
+             </div>
+             <button class="task-board-btn">Go to Task Board</button>
+           </div>
+         </div>
+       </div>
+    </section>
+
+    <section id="crm" class="tab-content">
+      <div class="crm-header">
+        <h2>Healthcare Professionals Directory</h2>
+        <div class="crm-controls">
+          <input type="text" class="crm-search" placeholder="Search HCPs, organisations, locations...">
+          <select class="crm-filter">
+            <option>All Specialisms</option>
+          </select>
+          <select class="crm-filter">
+            <option>Region: All</option>
+          </select>
+          <button class="add-hcp-btn">Add New HCP</button>
+        </div>
+      </div>
+      <div class="crm-table-wrap">
+        <table class="crm-table">
+          <thead>
+            <tr>
+              <th>Name / Qualification</th>
+              <th>Specialism</th>
+              <th>Organisation</th>
+              <th>Location</th>
+              <th>Last Interaction</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Dr. Sarah Jenkins</strong><br><span class="small">MBBS, MRCP<br>(Cardiology)</span></td>
+              <td><span class="tag cardiology">Cardiology</span></td>
+              <td>St. Mary's Hospital</td>
+              <td>London, UK</td>
+              <td>12 Oct 2023</td>
+              <td><a href="#">View</a> / <a href="#">Edit</a></td>
+            </tr>
+            <tr>
+              <td><strong>Dr. Arjan Singh</strong><br><span class="small">MBChB, DRCOG</span></td>
+              <td><span class="tag general">General Practice</span></td>
+              <td>Northway Health Centre</td>
+              <td>Birmingham, UK</td>
+              <td>28 Sep 2023</td>
+              <td><a href="#">View</a> / <a href="#">Edit</a></td>
+            </tr>
+            <tr>
+              <td><strong>Prof. Elena Rossi</strong><br><span class="small">MD, PhD, FRCP</span></td>
+              <td><span class="tag oncology">Oncology</span></td>
+              <td>Royal Marsden NHS Foundation</td>
+              <td>London, UK</td>
+              <td>15 Oct 2023</td>
+              <td><a href="#">View</a> / <a href="#">Edit</a></td>
+            </tr>
+            <tr>
+              <td><strong>Dr. James Miller</strong><br><span class="small">MBChB, FRCA</span></td>
+              <td><span class="tag anaesthetics">Anaesthetics</span></td>
+              <td>City General Hospital</td>
+              <td>Manchester, UK</td>
+              <td>05 Oct 2023</td>
+              <td><a href="#">View</a> / <a href="#">Edit</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="crm-pagination">
+        <span>Page 1 of 12</span> <a href="#">Previous</a> <a href="#">Next</a>
+      </div>
+    </section>
+
+    <section id="interaction-log" class="tab-content">
+      <div class="interaction-header">
+        <h2>Interaction Log</h2>
+        <p>Manage and record all client interactions and communications.</p>
+      </div>
+      <div class="interaction-content">
+        <div class="interaction-form">
+          <h3>Log New Interaction</h3>
+          <form>
+            <label>Client / Institution
+              <select>
+                <option>Select a client...</option>
+              </select>
+            </label>
+            <div class="row">
+              <label>Date <input type="date"></label>
+              <label>Type
+                <select>
+                  <option>In-Person</option>
+                </select>
+              </label>
+            </div>
+            <label>Subject
+              <input type="text" placeholder="e.g. Q4 Product Catalog Review">
+            </label>
+            <label>Detailed Notes
+              <textarea placeholder="Enter details of the discussion..."></textarea>
+            </label>
+            <button type="button" class="save-btn">Save Interaction</button>
+          </form>
+        </div>
+        <div class="interaction-history">
+          <h3>Recent History</h3>
+          <table class="history-table">
+            <thead>
+              <tr><th>Date</th><th>Client</th><th>Type</th><th>Subject</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Oct 24, 2023</td>
+                <td>St. Mary's Hospital</td>
+                <td><span class="tag inperson">In-Person</span></td>
+                <td>Monthly Inventory Audit</td>
+              </tr>
+              <tr>
+                <td>Oct 22, 2023</td>
+                <td>Central Pharma Group</td>
+                <td><span class="tag email">Email</span></td>
+                <td>Re: Pricing Proposal Q1</td>
+              </tr>
+              <tr>
+                <td>Oct 21, 2023</td>
+                <td>Dr. Aris Thorne</td>
+                <td><span class="tag phone">Phone Call</span></td>
+                <td>New Product Inquiry</td>
+              </tr>
+              <tr>
+                <td>Oct 19, 2023</td>
+                <td>General Clinic South</td>
+                <td><span class="tag video">Video Conf.</span></td>
+                <td>Compliance Training Sync</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <a href="#">&lt;</a>
+            <a href="#" class="active">1</a>
+            <a href="#">2</a>
+            <a href="#">3</a>
+            <a href="#">&gt;</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tasks" class="tab-content">
+      <div class="tasks-header">
+        <h2>Tasks & Follow-Ups</h2>
+        <button class="new-task-btn">+ New Task</button>
+      </div>
+      <table class="tasks-table">
+        <thead>
+          <tr>
+            <th>Task Details</th>
+            <th>Related Lead/Client</th>
+            <th>Status</th>
+            <th>Due Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Follow up on quarterly samples</strong><br><span class="small">Review material usage reports before call</span></td>
+            <td>St. Mary’s General Hospital</td>
+            <td><span class="status pending">Pending</span></td>
+            <td>Oct 24, 2023</td>
+            <td><a href="#">Edit</a></td>
+          </tr>
+          <tr>
+            <td><strong>Send updated dosage guidelines</strong><br><span class="small">Include PDF for New-Age Oncology wing</span></td>
+            <td>Dr. Sarah Jenkins</td>
+            <td><span class="status completed">Completed</span></td>
+            <td>Oct 21, 2023</td>
+            <td><a href="#">Edit</a></td>
+          </tr>
+          <tr>
+            <td><strong>Coordinate Lunch & Learn Session</strong><br><span class="small">Check availability for boardroom A</span></td>
+            <td>Riverside Biotech</td>
+            <td><span class="status overdue">Overdue</span></td>
+            <td>Oct 19, 2023</td>
+            <td><a href="#">Edit</a></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="tasks-summary">
+        <div class="summary-card">
+          <div class="summary-number">12</div>
+          <div class="summary-label">Active Tasks</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-number green">45</div>
+          <div class="summary-label">Completed (MTD)</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-number">3</div>
+          <div class="summary-label">Due Today</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-number gray">88%</div>
+          <div class="summary-label">Efficiency Rate</div>
+        </div>
+      </div>
+
+      <div class="internal-notes">
+        <h3>Internal Notes</h3>
+        <div class="note">
+          <div class="note-header">Oct 23 - Nathan K.</div>
+          <div class="note-body">"Spoke with procurement at St. Mary’s. They are interested in the new peptide stabilizers. Need to follow up with a quote."</div>
+        </div>
+        <div class="note">
+          <div class="note-header">Oct 20 - System</div>
+          <div class="note-body">Campaign 'Fall Outreach' automatically generated 15 new leads for follow-up.</div>
+        </div>
+        <textarea placeholder="Add a quick note..."></textarea>
+      </div>
+    </section>
+
+    <section id="campaigns" class="tab-content">
+      <div class="campaigns-header">
+        <h2>Campaigns Overview</h2>
+        <p class="campaigns-subtitle">Active campaigns assigned to your territory. (Read-Only)</p>
+      </div>
+
+      <div class="campaigns-grid">
+        <!-- example campaign cards -->
+        <div class="campaign-card">
+          <div class="campaign-card-top color-blue">CARDIOCARE Q4</div>
+          <div class="campaign-card-body">
+            <h3>
+              Hypertension Awareness
+              <span class="status active">ACTIVE</span>
+            </h3>
+            <p>Educational drive for primary care physicians on latest ARB guidelines.</p>
+            <div class="campaign-dates"><i class="fa fa-clock-o"></i> Ends: Dec 15, 2023</div>
+          </div>
+        </div>
+
+        <div class="campaign-card">
+          <div class="campaign-card-top color-purple">IMMUNOBOOST</div>
+          <div class="campaign-card-body">
+            <h3>
+              Vaccine Outreach
+              <span class="status active">ACTIVE</span>
+            </h3>
+            <p>Annual influenza and pneumonia prevention campaign for elderly care…</p>
+            <div class="campaign-dates"><i class="fa fa-clock-o"></i> Ends: Jan 30, 2024</div>
+          </div>
+        </div>
+
+        <div class="campaign-card">
+          <div class="campaign-card-top color-green">DIABETES CARE</div>
+          <div class="campaign-card-body">
+            <h3>
+              T2D Management
+              <span class="status active">ACTIVE</span>
+            </h3>
+            <p>Introducing the new monitoring app integration for Type 2 patients.</p>
+            <div class="campaign-dates"><i class="fa fa-clock-o"></i> Ends: Feb 28, 2024</div>
+          </div>
+        </div>
+
+        <div class="campaign-card">
+          <div class="campaign-card-top color-gray">NEUROFOCUS</div>
+          <div class="campaign-card-body">
+            <h3>
+              Sleep Hygiene
+              <span class="status prelaunch">PRE-LAUNCH</span>
+            </h3>
+            <p>Materials pending final regulatory approval for regional launch.</p>
+            <div class="campaign-dates"><i class="fa fa-clock-o"></i> Starts: Mar 01, 2024</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="materials" class="tab-content">
+      <div class="materials-header">
+        <h2>Materials</h2>
+        <div class="materials-actions">
+          <input type="text" class="materials-search" placeholder="Search materials by name or tag…">
+          <button class="upload-btn">Upload Material</button>
+        </div>
+      </div>
+
+      <div class="materials-filter">
+        <button class="filter-btn active" data-filter="all">All Assets</button>
+        <button class="filter-btn" data-filter="pdfs">PDFs</button>
+        <button class="filter-btn" data-filter="videos">Videos</button>
+        <button class="filter-btn" data-filter="images">Images</button>
+        <button class="filter-btn" data-filter="archives">Archives</button>
+      </div>
+
+      <div class="materials-grid">
+        <!-- example cards, these would normally be generated dynamically -->
+        <div class="card pdf">
+          <div class="card-thumb">
+            <i class="fa fa-file-pdf-o"></i>
+          </div>
+          <div class="card-info">
+            <span class="card-title">Brand_Guidelines_2024.pdf</span>
+            <span class="card-meta">4.2 MB • Oct 12</span>
+          </div>
+        </div>
+        <div class="card video">
+          <div class="card-thumb">
+            <i class="fa fa-play-circle"></i>
+          </div>
+          <div class="card-info">
+            <span class="card-title">Summer_Campaign_Teaser.mp4</span>
+            <span class="card-meta">128 MB • Oct 10</span>
+          </div>
+        </div>
+        <div class="card image">
+          <div class="card-thumb">
+            <i class="fa fa-picture-o"></i>
+          </div>
+          <div class="card-info">
+            <span class="card-title">Product_Hero_01.jpg</span>
+            <span class="card-meta">15 MB • Oct 08</span>
+          </div>
+        </div>
+        <div class="card image">
+          <div class="card-thumb">
+            <i class="fa fa-picture-o"></i>
+          </div>
+          <div class="card-info">
+            <span class="card-title">Social_Ad_Square.png</span>
+            <span class="card-meta">850 KB • Oct 05</span>
+          </div>
+        </div>
+        <div class="card pdf" style="opacity:0.5; pointer-events:none;">
+          <div class="card-thumb">
+            <i class="fa fa-file-pdf-o"></i>
+          </div>
+          <div class="card-info">
+            <span class="card-title">Q4_Marketing_Strategy.pdf</span>
+            <span class="card-meta">12 MB • Oct 02</span>
+          </div>
+        </div>
+        <div class="card add-more">
+          <div class="card-thumb">
+            <i class="fa fa-plus"></i>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="mobile-nav">
+      <a href="#" class="active">Dashboard</a>
+      <a href="#">CRM</a>
+      <a href="#">Interaction Log</a>
+      <a href="#">Tasks</a>
+      <a href="#">Campaigns</a>
+      <a href="#">Materials</a>
+  </nav>
+
+</div>
+
+<div id="avatar-modal" class="avatar-modal">
+  <div class="avatar-modal-content">
+    <h3>Upload Profile Picture</h3>
+
+    <div id="drop-area" class="drop-area">
+      <p>Drag & drop an image here<br>or click to select</p>
+      <input type="file" id="avatar-file" accept="image/*" hidden>
+    </div>
+
+    <button id="close-avatar-modal">Cancel</button>
+    <button id="upload-avatar-btn">Save</button>
+    
+
+    <p id="avatar-upload-status"></p>
+  </div>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.sidebar-nav a');
+  const contents = document.querySelectorAll('.tab-content');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', e => {
+      e.preventDefault();
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      contents.forEach(c => c.classList.remove('active'));
+      const target = tab.getAttribute('data-tab');
+      document.getElementById(target).classList.add('active');
+    });
+  });
+</script>
+
+<script type="module">
+import { supabase } from "../../js/supabaseClient.js";
+
+const nameEl = document.querySelector(".profile-name");
+const roleEl = document.querySelector(".profile-role");
+const imgEl = document.getElementById("profile-img");
+
+async function loadUserProfile() {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.error("No user session found");
+    return;
+  }
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("full_name, role, avatar_url")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.error("Profile fetch error:", error);
+    return;
+  }
+
+  nameEl.textContent = profile.full_name || "Unknown User";
+  roleEl.textContent = profile.role || "User";
+
+  if (profile.avatar_url) {
+    imgEl.src = profile.avatar_url;
+  }
+}
+
+loadUserProfile();
+
+const modal = document.getElementById("avatar-modal");
+const closeModal = document.getElementById("close-avatar-modal");
+const dropArea = document.getElementById("drop-area");
+const fileInput = document.getElementById("avatar-file");
+const uploadBtn = document.getElementById("upload-avatar-btn");
+const statusEl = document.getElementById("avatar-upload-status");
+
+let selectedFile = null;
+
+imgEl.addEventListener("click", () => {
+  modal.style.display = "flex";
+});
+
+closeModal.addEventListener("click", () => {
+  modal.style.display = "none";
+  statusEl.textContent = "";
+});
+
+dropArea.addEventListener("click", () => fileInput.click());
+dropArea.addEventListener("dragover", e => {
+  e.preventDefault();
+  dropArea.classList.add("dragover");
+});
+dropArea.addEventListener("dragleave", () => dropArea.classList.remove("dragover"));
+dropArea.addEventListener("drop", e => {
+  e.preventDefault();
+  dropArea.classList.remove("dragover");
+  selectedFile = e.dataTransfer.files[0];
+  dropArea.querySelector("p").textContent = selectedFile.name;
+});
+
+fileInput.addEventListener("change", () => {
+  selectedFile = fileInput.files[0];
+  dropArea.querySelector("p").textContent = selectedFile.name;
+});
+
+uploadBtn.addEventListener("click", async () => {
+  if (!selectedFile) {
+    statusEl.textContent = "Please select an image.";
+    return;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    statusEl.textContent = "Not logged in.";
+    return;
+  }
+
+  const ext = selectedFile.name.split(".").pop();
+  const fileName = `${user.id}-${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(fileName, selectedFile);
+
+  if (uploadError) {
+    statusEl.textContent = "Upload failed.";
+    return;
+  }
+
+  const { data: urlData } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(fileName);
+
+  const avatarUrl = urlData.publicUrl;
+
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({ avatar_url: avatarUrl })
+    .eq("id", user.id);
+
+  if (updateError) {
+    statusEl.textContent = "Failed to save avatar.";
+    return;
+  }
+
+  imgEl.src = avatarUrl;
+  statusEl.textContent = "Profile picture updated!";
+  modal.style.display = "none";
+});
+</script>
+
+</body>
+</html>
