@@ -1,70 +1,118 @@
 <!DOCTYPE html>
 <html>
 <head>
-
-<title>Login</title>
-<link rel="stylesheet" href="style.css">
-
+  <title>Login</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 
+<body>
 
-<div class="login-layout">
-  <!-- Left: Logo and company -->
-  <div class="login-left">
-    <img src="../../../Assets/Collab_Dev_Icon_Logo.png" alt="Alderwell Logo" class="big-logo">
-    <div class="company-title">
-      <span class="company-main">Alderwell</span><br>
-      <span class="company-sub">Pharmaceuticals</span>
-    </div>
-  </div>
-  <!-- Right: Login card -->
-  <div class="login-card">
-    <h2 class="welcome">Welcome Back</h2>
-    <p class="subtitle">Please enter your credentials to access your campaign dashboard.</p>
-    <form id="login-form">
-      <label class="input-label">EMAIL OR USERNAME</label>
-      <div class="input-group">
-        <span class="input-icon"><svg width="18" height="18" fill="#aab0b6" viewBox="0 0 24 24"><path d="M2 4v16h20V4H2zm18 2v.511l-8 5.333-8-5.333V6h16zm0 12H4V8.489l8 5.333 8-5.333V18z"/></svg></span>
-        <input type="email" id="email" placeholder="name@pharmacy.com" required>
-      </div>
-      <label class="input-label">PASSWORD <a href="#" class="forgot">Forgot Password?</a></label>
-      <div class="input-group">
-        <span class="input-icon"><svg width="18" height="18" fill="#aab0b6" viewBox="0 0 24 24"><path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6-7V7a6 6 0 0 0-12 0v3a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zm-8-3a4 4 0 0 1 8 0v3H6V7zm10 12H6v-7h12v7z"/></svg></span>
-        <input type="password" id="password" placeholder="••••••••" required>
-      </div>
-      <div class="options-row">
-        <label class="checkbox-label"><input type="checkbox" id="stay-signed-in"> Stay signed in for 30 days</label>
-      </div>
-      <button type="submit">Sign In to Dashboard <span class="arrow">→</span></button>
-    </form>
-    <p id="message"></p>
-    <div class="form-footer">
-      <small>By signing in, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></small>
-    </div>
-  </div>
-</div>
+<h2>Login</h2>
+
+<form id="login-form">
+  <input type="email" id="email" placeholder="Email" required>
+  <input type="password" id="password" placeholder="Password" required>
+  <button type="submit">Login</button>
+  <a href="/Pages/LoginSignupScreen/signup.html">Sign Up Here</a>
+</form>
+
+<p id="message"></p>
 
 <script type="module">
-import { supabase } from "../../js/supabaseClient.js"
-const form = document.getElementById("login-form")
-const message = document.getElementById("message")
+
+import { supabase } from "../../js/supabaseClient.js";
+
+const form = document.getElementById("login-form");
+const message = document.getElementById("message");
+
+// -------------------------------
+// LOGIN HANDLER
+// -------------------------------
 form.addEventListener("submit", async (e) => {
-  e.preventDefault()
-  const email = document.getElementById("email").value
-  const password = document.getElementById("password").value
+  e.preventDefault();
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: email,
-    password: password
-  })
-  if(error){
-    message.textContent = error.message
-    message.className = 'error'
-  } else {
-    message.textContent = "Logged in successfully"
-    message.className = 'success'
-    console.log(data.user)
+    email,
+    password
+  });
+
+  if (error) {
+    message.textContent = error.message;
+    return;
   }
-})
+
+  message.textContent = "Logged in successfully";
+
+  // Wait for Supabase session to hydrate
+  setTimeout(() => routeUser(), 500);
+});
+
+// -------------------------------
+// ROLE-BASED REDIRECT
+// -------------------------------
+async function routeUser() {
+
+  // 1. Get logged-in user
+  const session = await supabase.auth.getSession();
+  const user = session.data.session?.user;
+
+  if (!user) {
+    console.error("No user session available.");
+    return;
+  }
+
+  // 2. Fetch their role from profiles table
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError) {
+    console.error("Profile fetch error:", profileError);
+    return;
+  }
+
+  if (!profile || !profile.role) {
+    window.location.href = "/Pages/No-Role/No-Role.html";
+    return;
+  }
+
+  // 3. Redirect based on role
+  switch (profile.role) {
+  case "admin":
+    window.location.href = "/Pages/Admin/index.html";
+    break;
+
+  case "marketing_sales":
+    window.location.href = "/Pages/MarketingSales/MarketingSales.html";
+    break;
+
+  case "compliance_reviewer":
+    window.location.href = "/Pages/ComplianceReviewer/index.html";
+    break;
+
+  case "campaign_management":
+    window.location.href = "/Pages/CampaignManagement/index.html";
+    break;
+
+  case "liaison_officer":
+    window.location.href = "/Pages/LiaisonOfficer/index.html";
+    break;
+
+  case "no_role":
+    window.location.href = "/Pages/NoRole/NoRole.html";
+    break;
+
+
+    default:
+      console.error("Unknown role:", profile.role);
+  }
+}
+
 </script>
 
 </body>
