@@ -1,0 +1,317 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #edf2ee;
+  min-height: 100vh;
+  margin: 0;
+  color: #333;
+}
+
+/* ── TWO-COLUMN LAYOUT ── */
+.loginLayout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* LEFT PANEL */
+.loginLeft {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 40px;
+  background: #edf2ee;
+}
+
+.bigLogo {
+  width: 100px;
+  height: 100px;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.1));
+}
+
+.companyTitle {
+  display: flex;
+  flex-direction: column;
+}
+.companyMain {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #2e4d3d;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+.companySub {
+  font-size: 1.25rem;
+  color: #9a8f6e;
+  font-weight: 500;
+  margin-top: 4px;
+  letter-spacing: 0.3px;
+}
+
+/* RIGHT PANEL */
+.loginRight {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 5vw;
+  background: #edf2ee;
+}
+
+.loginCard {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 40px rgba(46,77,61,0.12);
+  padding: 48px 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
+}
+
+/* FORM CONTENT */
+.welcome {
+  text-align: center;
+  color: #1e3328;
+  font-size: 1.85rem;
+  font-weight: 700;
+  margin: 0 0 10px 0;
+}
+.subtitle {
+  color: #777;
+  font-size: 0.92rem;
+  margin-bottom: 28px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.inputLabel {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #555;
+  letter-spacing: 0.5px;
+  margin-bottom: 7px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.forgot {
+  color: #2e7d32;
+  font-size: 0.82rem;
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.forgot:hover {
+  text-decoration: underline;
+}
+
+.inputGroup {
+  display: flex;
+  align-items: center;
+  background: #f8f9fa;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  padding: 0 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.inputGroup:focus-within {
+  background: #fff;
+  border-color: #2e4d3d;
+  box-shadow: 0 0 0 3px rgba(46,77,61,0.07);
+}
+.inputIcon {
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.inputGroup input {
+  border: none;
+  background: transparent;
+  padding: 13px 0;
+  font-size: 0.95rem;
+  width: 100%;
+  outline: none;
+  color: #333;
+}
+.inputGroup input::placeholder {
+  color: #c0c5c2;
+}
+
+.optionsRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.checkboxLabel {
+  font-size: 0.9rem;
+  color: #555;
+  display: flex;
+  align-items: center;
+  user-select: none;
+  cursor: pointer;
+}
+.checkboxLabel input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #2e4d3d;
+  cursor: pointer;
+}
+
+.submitButton {
+  width: 100%;
+  padding: 14px;
+  background: #2e4d3d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(46,77,61,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.submitButton:hover {
+  background: #1f352a;
+  box-shadow: 0 4px 16px rgba(46,77,61,0.25);
+}
+.submitButton:active {
+  transform: scale(0.99);
+}
+.arrow {
+  font-size: 1.1em;
+  margin-left: 8px;
+}
+
+.message {
+  margin-top: 6px;
+  margin-bottom: 10px;
+  text-align: center;
+  font-size: 0.88rem;
+  min-height: 18px;
+}
+.messageError {
+  color: #c62828;
+  font-weight: 500;
+}
+.messageSuccess {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.formFooter {
+  margin-top: 14px;
+  text-align: center;
+  color: #aaa;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.formFooter a {
+  color: #555;
+  text-decoration: underline;
+}
+.formFooter a:hover {
+  color: #2e4d3d;
+}
+
+/* ── RESPONSIVE ── */
+
+/* Tablet: keep two columns but tighter */
+@media (max-width: 900px) {
+  .loginLeft {
+    padding: 40px 24px;
+  }
+  .companyMain {
+    font-size: 2.2rem;
+  }
+  .companySub {
+    font-size: 1.05rem;
+  }
+  .bigLogo {
+    width: 80px;
+    height: 80px;
+  }
+  .loginCard {
+    padding: 36px 28px 28px;
+  }
+}
+
+/* Mobile: single centered column */
+@media (max-width: 640px) {
+  body {
+    align-items: flex-start;
+  }
+
+  .loginLayout {
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+    box-sizing: border-box;
+    gap: 28px;
+  }
+
+  /* Compact logo strip */
+  .loginLeft {
+    flex: none;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+    width: 100%;
+  }
+
+  .bigLogo {
+    width: 44px;
+    height: 44px;
+  }
+
+  .companyTitle {
+    flex-direction: column;
+    gap: 0;
+  }
+  .companyMain {
+    font-size: 1.5rem;
+    letter-spacing: -0.5px;
+  }
+  .companySub {
+    font-size: 0.85rem;
+    margin-top: 1px;
+  }
+
+  /* Card fills width */
+  .loginRight {
+    flex: none;
+    width: 100%;
+    padding: 0;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .loginCard {
+    max-width: 100%;
+    width: 100%;
+    padding: 28px 20px 24px;
+    border-radius: 12px;
+  }
+
+  .welcome {
+    font-size: 1.45rem;
+  }
+
+  .subtitle {
+    font-size: 0.88rem;
+    margin-bottom: 22px;
+  }
+
+  .submitButton {
+    padding: 12px;
+  }
+}

@@ -1,0 +1,1073 @@
+.tabContent {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+h1 {
+  margin-bottom: 20px;
+}
+
+h2 {
+  margin-bottom: 20px;
+  color: #1e3328;
+  font-size: 1.5rem;
+}
+
+/* SEARCH BAR */
+.searchBar {
+  width: 100%;
+  max-width: 420px;
+  padding: 12px 16px;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  margin-bottom: 24px;
+  transition: border-color 0.2s;
+}
+
+.searchBar:focus {
+  outline: none;
+  border-color: #2e4d3d;
+  box-shadow: 0 0 0 3px rgba(46, 77, 61, 0.07);
+}
+
+/* DASHBOARD GRID */
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+@media (max-width: 1024px) {
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* QUICK ACTIONS */
+.quickActions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.actionCard {
+  background: white;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  width: 100%;
+}
+
+.actionCard:hover {
+  border-color: #2e4d3d;
+  box-shadow: 0 4px 12px rgba(46, 77, 61, 0.08);
+  transform: translateY(-2px);
+}
+
+.actionIcon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.actionCard p {
+  margin: 0;
+  font-weight: 600;
+  color: #333;
+}
+
+@media (max-width: 768px) {
+  .quickActions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* RECENT ACTIVITY */
+.recentActivity {
+  background: white;
+  border-radius: 12px;
+  border: 1.5px solid #e3e8e4;
+  padding: 20px;
+}
+
+.activityHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.activityHeader h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2e7d32;
+  text-decoration: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+.linkButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  text-decoration: none;
+}
+
+.linkButton:focus-visible {
+  outline: 2px solid #2e4d3d;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.activityHeader .linkButton {
+  color: #2e7d32;
+  font-size: 0.9rem;
+}
+
+.activityItem {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.activityItem:last-child {
+  border-bottom: none;
+}
+
+.activityIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.activityIcon.email {
+  background: #e3f2fd;
+}
+
+.activityIcon.task {
+  background: #f3e5f5;
+}
+
+.activityIcon.download {
+  background: #e8f5e9;
+}
+
+.activityDetails p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.activityDetails strong {
+  color: #333;
+}
+
+.activityMeta {
+  color: #999;
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+/* PENDING TASKS */
+.pendingTasks {
+  background: white;
+  border-radius: 12px;
+  border: 1.5px solid #e3e8e4;
+  padding: 20px;
+}
+
+.pendingTasks h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.taskItem {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.taskItem:last-of-type {
+  border-bottom: none;
+}
+
+.taskItem input[type='checkbox'] {
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.taskInfo {
+  flex: 1;
+}
+
+.taskInfo p {
+  margin: 0 0 4px 0;
+  color: #333;
+}
+
+.taskInfo p.taskCompleted {
+  text-decoration: line-through;
+  color: #999;
+}
+
+.taskDue {
+  display: block;
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.taskBoardBtn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px;
+  background: #2e4d3d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.taskBoardBtn:hover {
+  background: #1f352a;
+}
+
+/* CRM SECTION */
+.crmHeader {
+  margin-bottom: 24px;
+}
+
+.crmControls {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.crmSearch {
+  flex: 1;
+  min-width: 250px;
+  padding: 10px 14px;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.crmFilter {
+  padding: 10px 14px;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+}
+
+.addHcpBtn {
+  padding: 10px 20px;
+  background: #2e4d3d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.addHcpBtn:hover {
+  background: #1f352a;
+}
+
+/* CRM TABLE */
+.crmTableWrap {
+  background: white;
+  border-radius: 12px;
+  border: 1.5px solid #e3e8e4;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.crmTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.crmTable thead {
+  background: #f8f9fa;
+}
+
+.crmTable th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #e3e8e4;
+}
+
+.crmTable td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #555;
+}
+
+.crmTable tbody tr:hover {
+  background: #fafbff;
+}
+
+.crmTable .small {
+  display: block;
+  font-size: 0.85rem;
+  color: #999;
+  font-weight: normal;
+}
+
+.tag {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #e3f2fd;
+  color: #176d4d;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.crmTable .linkButton {
+  color: #2e7d32;
+  font-size: 0.9rem;
+}
+
+
+/* CRM PAGINATION */
+.crmPagination {
+  padding: 16px;
+  text-align: center;
+  background: white;
+  border-top: 1px solid #e3e8e4;
+  font-size: 0.9rem;
+}
+
+.crmPagination .linkButton {
+  margin-left: 12px;
+  color: #2e7d32;
+}
+
+/* INTERACTION LOG */
+.interactionHeader {
+  margin-bottom: 24px;
+}
+
+.interactionHeader p {
+  color: #666;
+  margin: 8px 0 0 0;
+}
+
+.logForm {
+  background: white;
+  border-radius: 12px;
+  border: 1.5px solid #e3e8e4;
+  padding: 24px;
+  max-width: 600px;
+}
+
+.formInput {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: #2e4d3d;
+}
+
+.formTextarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  min-height: 120px;
+  resize: vertical;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.formTextarea:focus {
+  outline: none;
+  border-color: #2e4d3d;
+}
+
+.submitBtn {
+  padding: 12px 28px;
+  background: #2e4d3d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.submitBtn:hover {
+  background: #1f352a;
+}
+
+.secondaryBtn {
+  padding: 12px 20px;
+  background: #f0f3f1;
+  color: #1f352a;
+  border: 1px solid #d0d8d3;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.secondaryBtn:hover {
+  background: #e3e8e4;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 30, 25, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+.modalCard,
+.modalCardLarge {
+  width: min(640px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #dce6df;
+  box-shadow: 0 20px 40px rgba(18, 41, 31, 0.2);
+  padding: 20px;
+}
+
+.modalCardLarge {
+  width: min(820px, 100%);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  color: #1e3328;
+}
+
+.modalClose {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #d0d8d3;
+  background: #fff;
+  color: #2e4d3d;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.modalClose:hover {
+  background: #f4f8f5;
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+}
+
+.modalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.clientsList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.clientItem {
+  text-align: left;
+  background: #fff;
+  border: 1.5px solid #dfe7e2;
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clientItem span {
+  color: #607169;
+  font-size: 0.86rem;
+}
+
+.clientItem:hover,
+.clientItemActive {
+  border-color: #2e4d3d;
+  background: #f5faf7;
+}
+
+.clientDetails {
+  border-top: 1px solid #e3e8e4;
+  padding-top: 14px;
+}
+
+.clientDetails h4 {
+  margin: 0 0 8px 0;
+  color: #1e3328;
+}
+
+.clientDetails p {
+  margin: 4px 0;
+  color: #42544d;
+}
+
+/* TASK BOARD */
+.taskBoard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.tasksHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.addTaskFromBoardBtn {
+  border: none;
+  border-radius: 8px;
+  background: #2e4d3d;
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.addTaskFromBoardBtn:hover {
+  background: #1f352a;
+}
+
+.taskColumn {
+  background: white;
+  border-radius: 12px;
+  border: 1.5px solid #e3e8e4;
+  padding: 20px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.taskColumnDropActive {
+  border-color: #2e4d3d;
+  box-shadow: 0 0 0 3px rgba(46, 77, 61, 0.12);
+  background: #f7fbf9;
+}
+
+.taskColumn h3 {
+  margin: 0 0 16px 0;
+  color: #333;
+}
+
+.taskCard {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-left: 4px solid #2e4d3d;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.taskCard:active {
+  cursor: grabbing;
+}
+
+.taskCardDragging {
+  opacity: 0.55;
+  transform: scale(0.98);
+}
+
+.taskCard.completed {
+  border-left-color: #999;
+  opacity: 0.6;
+}
+
+.taskCard p {
+  margin: 0 0 4px 0;
+  color: #333;
+}
+
+.taskCard small {
+  color: #999;
+  font-size: 0.85rem;
+}
+
+/* CAMPAIGNS */
+.campaignsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.campaignCard {
+  background: white;
+  border-radius: 12px;
+  border: 1.5px solid #e3e8e4;
+  padding: 20px;
+}
+
+.campaignCard h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.campaignCard p {
+  margin: 0 0 16px 0;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background: #e3e8e4;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  background: linear-gradient(90deg, #2e4d3d, #2e7d32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  transition: width 0.3s ease;
+}
+
+/* MATERIALS */
+.materialsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.materialsActions {
+  display: flex;
+  gap: 12px;
+}
+
+.materialsSearch {
+  padding: 10px 14px;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 8px;
+  width: 250px;
+  font-size: 0.95rem;
+}
+
+.uploadBtn {
+  padding: 10px 20px;
+  background: #2e4d3d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.uploadBtn:hover {
+  background: #1f352a;
+}
+
+.materialsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.materialCard {
+  background: white;
+  border-radius: 12px;
+  border: 1.5px solid #e3e8e4;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.materialCard:hover {
+  border-color: #2e4d3d;
+  box-shadow: 0 4px 12px rgba(46, 77, 61, 0.08);
+}
+
+.materialIcon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.materialCard h4 {
+  margin: 12px 0 8px 0;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.materialCard p {
+  margin: 0 0 12px 0;
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.materialMeta {
+  margin: 0 0 6px 0;
+  color: #5d6d67;
+  font-size: 0.8rem;
+}
+
+.materialCardActions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.materialCard a {
+  color: #2e7d32;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.materialCard a:hover {
+  text-decoration: underline;
+}
+
+/* RESPONSIVE STYLES */
+
+/* TABLET (768px and below) */
+@media (max-width: 768px) {
+  h1 {
+    margin-bottom: 16px;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+  }
+
+  .searchBar {
+    max-width: 100%;
+    margin-bottom: 20px;
+  }
+
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .quickActions {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .actionCard {
+    padding: 16px;
+  }
+
+  .crmControls {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .crmSearch,
+  .crmFilter {
+    width: 100%;
+  }
+
+  .crmTable {
+    font-size: 0.85rem;
+  }
+
+  .crmTable th,
+  .crmTable td {
+    padding: 8px 12px;
+  }
+
+  .campaignsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  .materialsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .materialsSearch {
+    width: 100%;
+  }
+
+  .taskBoard {
+    grid-template-columns: 1fr;
+  }
+
+  .tasksHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .modalGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* MOBILE (480px and below) */
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+  }
+
+  h2 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
+
+  .searchBar {
+    font-size: 0.9rem;
+    padding: 10px 12px;
+  }
+
+  .quickActions {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .actionCard {
+    padding: 12px;
+  }
+
+  .actionIcon {
+    font-size: 28px;
+  }
+
+  .actionCard p {
+    font-size: 0.9rem;
+  }
+
+  .recentActivity,
+  .pendingTasks {
+    padding: 16px;
+  }
+
+  .activityItem,
+  .taskItem {
+    padding: 10px 0;
+  }
+
+  .activityIcon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .crmHeader h2 {
+    margin-bottom: 12px;
+  }
+
+  .crmControls {
+    gap: 8px;
+  }
+
+  .crmSearch,
+  .crmFilter,
+  .addHcpBtn {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+  }
+
+  .crmTableWrap {
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  .crmTable {
+    font-size: 0.75rem;
+  }
+
+  .crmTable th,
+  .crmTable td {
+    padding: 6px 8px;
+  }
+
+  .logForm {
+    padding: 16px;
+  }
+
+  .formInput,
+  .formTextarea {
+    margin-bottom: 12px;
+  }
+
+  .submitBtn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+
+  .campaignsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .campaignCard {
+    padding: 16px;
+  }
+
+  .campaignCard h3 {
+    font-size: 1rem;
+  }
+
+  .materialsHeader {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .materialsActions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .materialsSearch,
+  .uploadBtn {
+    width: 100%;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+  }
+
+  .materialsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+  }
+
+  .materialCard {
+    padding: 12px;
+  }
+
+  .materialIcon {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+
+  .materialCard h4 {
+    font-size: 0.85rem;
+    margin: 8px 0 4px 0;
+  }
+
+  .materialCard p {
+    font-size: 0.75rem;
+    margin-bottom: 8px;
+  }
+
+  .materialCard a {
+    font-size: 0.8rem;
+  }
+
+  .materialCardActions {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .taskBoard {
+    gap: 16px;
+  }
+
+  .taskColumn {
+    padding: 16px;
+  }
+
+  .taskColumn h3 {
+    font-size: 0.95rem;
+  }
+
+  .taskCard {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .modalCard,
+  .modalCardLarge {
+    padding: 14px;
+  }
+
+  .modalActions {
+    flex-direction: column;
+  }
+
+  .modalActions .submitBtn,
+  .modalActions .secondaryBtn {
+    width: 100%;
+  }
+}

@@ -1,0 +1,54 @@
+.dashboardLayout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f7fb;
+}
+
+.mainContent {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.mainArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px 40px;
+}
+
+.mainArea h1 {
+  margin: 0 0 20px 0;
+  font-size: 2rem;
+  color: #2e4d3d;
+}
+
+.mainArea p {
+  color: #666;
+  line-height: 1.6;
+}
+
+/* TABLET (768px and below) */
+@media (max-width: 768px) {
+  .mainArea {
+    padding: 20px;
+    padding-bottom: 90px;
+  }
+
+  .mainArea h1 {
+    font-size: 1.5rem;
+  }
+}
+
+/* MOBILE (480px and below) */
+@media (max-width: 480px) {
+  .mainArea {
+    padding: 16px;
+    padding-bottom: 90px;
+  }
+
+  .mainArea h1 {
+    font-size: 1.3rem;
+  }
+}
+

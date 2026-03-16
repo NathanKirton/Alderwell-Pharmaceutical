@@ -1,0 +1,560 @@
+.tabContent {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pageHeader h1,
+.pageHeaderRow h1 {
+  margin: 0;
+  color: #1e3328;
+  font-size: 1.9rem;
+}
+
+.pageHeader p,
+.pageHeaderRow p {
+  margin: 8px 0 0 0;
+  color: #6c757d;
+}
+
+.pageHeader {
+  margin-bottom: 24px;
+}
+
+.pageHeaderRow {
+  margin-bottom: 20px;
+}
+
+.sectionTitle {
+  margin: 0 0 14px 0;
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #425d4e;
+}
+
+.quickActionsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.quickActionCard {
+  border: 1.5px solid #e3e8e4;
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.quickActionCard:hover {
+  border-color: #2e4d3d;
+  box-shadow: 0 6px 14px rgba(46, 77, 61, 0.1);
+  transform: translateY(-1px);
+}
+
+.quickActionCard p {
+  margin: 10px 0 0 0;
+  font-weight: 600;
+  color: #2f3e35;
+}
+
+.quickActionIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf4ef;
+}
+
+.overviewGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 18px;
+}
+
+.scheduleCard,
+.metricsCard,
+.visitForm,
+.tableCard {
+  background: #fff;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 12px;
+}
+
+.scheduleCard,
+.metricsCard,
+.tableCard {
+  padding: 18px;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.cardHeader h3,
+.metricsCard h3 {
+  margin: 0;
+  color: #2f3e35;
+}
+
+.scheduleList {
+  display: flex;
+  flex-direction: column;
+}
+
+.scheduleItem {
+  display: grid;
+  grid-template-columns: 95px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #edf1ef;
+}
+
+.scheduleItem:last-child {
+  border-bottom: none;
+}
+
+.scheduleTime {
+  color: #4e5d55;
+  font-weight: 600;
+}
+
+.scheduleLocation {
+  margin: 0;
+  color: #22312a;
+  font-weight: 700;
+}
+
+.scheduleDetail {
+  margin: 4px 0 0 0;
+  color: #6d7a72;
+  font-size: 0.88rem;
+}
+
+.statusPill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.confirmed {
+  background: #eaf8ef;
+  color: #205b39;
+}
+
+.intransit {
+  background: #fff5e6;
+  color: #9a5f09;
+}
+
+.internal {
+  background: #eceff8;
+  color: #314271;
+}
+
+.pending {
+  background: #f4f5f7;
+  color: #616b76;
+}
+
+.metricRow {
+  margin-top: 14px;
+}
+
+.metricLabelRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  color: #4d5e55;
+  margin-bottom: 6px;
+}
+
+.metricTrack {
+  height: 10px;
+  border-radius: 999px;
+  background: #edf2ef;
+  overflow: hidden;
+}
+
+.metricFill {
+  height: 100%;
+  background: linear-gradient(90deg, #2e4d3d, #4f7d66);
+}
+
+.metricsFoot {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  border-top: 1px solid #edf1ef;
+  padding-top: 14px;
+}
+
+.metricsFoot div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metricsFoot strong {
+  font-size: 1.4rem;
+  color: #21382d;
+}
+
+.metricsFoot span {
+  font-size: 0.76rem;
+  color: #6f7b75;
+  text-transform: uppercase;
+}
+
+.visitForm {
+  padding: 20px;
+  max-width: 920px;
+}
+
+.fieldLabel {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #495d52;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.input,
+.textarea,
+.search,
+.materialsSearch {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid #d8e0db;
+  border-radius: 8px;
+  padding: 11px 13px;
+  font-size: 0.95rem;
+  margin-bottom: 14px;
+  font-family: inherit;
+}
+
+.input:focus,
+.textarea:focus,
+.search:focus,
+.materialsSearch:focus {
+  outline: none;
+  border-color: #2e4d3d;
+  box-shadow: 0 0 0 3px rgba(46, 77, 61, 0.07);
+}
+
+.inlineFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.checkGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 24px;
+  margin-bottom: 14px;
+}
+
+.checkGrid label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4f5f56;
+  font-size: 0.92rem;
+}
+
+.textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+}
+
+.primaryBtn,
+.secondaryBtn,
+.uploadBtn,
+.smallBtn {
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.primaryBtn,
+.uploadBtn {
+  background: #2e4d3d;
+  color: #fff;
+  padding: 10px 16px;
+}
+
+.primaryBtn:hover,
+.uploadBtn:hover {
+  background: #22392d;
+}
+
+.secondaryBtn {
+  background: #fff;
+  color: #4e5f55;
+  border: 1.5px solid #d2dad5;
+  padding: 10px 16px;
+}
+
+.secondaryBtn:hover {
+  background: #f7f9f8;
+}
+
+.tasksToolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.search {
+  max-width: 320px;
+  margin-bottom: 0;
+}
+
+.toolbarActions {
+  display: flex;
+  gap: 8px;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dataTable th {
+  text-align: left;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #627268;
+  padding: 12px 10px;
+  border-bottom: 1px solid #e9efeb;
+  letter-spacing: 0.03em;
+}
+
+.dataTable td {
+  padding: 12px 10px;
+  color: #34433b;
+  border-bottom: 1px solid #eef2f0;
+}
+
+.dataTable tr:last-child td {
+  border-bottom: none;
+}
+
+.rowMeta {
+  margin: 4px 0 0 0;
+  color: #79857f;
+  font-size: 0.84rem;
+  font-weight: 400;
+}
+
+.smallBtn {
+  padding: 7px 10px;
+  font-size: 0.8rem;
+  background: #f5f8f6;
+  border: 1px solid #cad6cf;
+  color: #3a4c43;
+}
+
+.smallBtn:hover {
+  background: #ebf0ed;
+}
+
+.priorityDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.high {
+  background: #d64545;
+}
+
+.medium {
+  background: #d79b2a;
+}
+
+.low {
+  background: #6b8396;
+}
+
+.materialsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.materialsHeader h2 {
+  margin: 0;
+  color: #1f3228;
+}
+
+.materialsActions {
+  display: flex;
+  gap: 10px;
+}
+
+.materialsSearch {
+  width: 260px;
+  margin-bottom: 0;
+}
+
+.materialsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.materialCard {
+  background: #fff;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s;
+}
+
+.materialCard:hover {
+  border-color: #2e4d3d;
+  box-shadow: 0 6px 14px rgba(46, 77, 61, 0.08);
+}
+
+.materialIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: #eef4f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.materialCard h4 {
+  margin: 12px 0 6px 0;
+  color: #25372e;
+  font-size: 0.94rem;
+}
+
+.materialCard p {
+  margin: 0 0 8px 0;
+  color: #78857e;
+  font-size: 0.82rem;
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2e7d32;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 1024px) {
+  .overviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .quickActionsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .pageHeader h1,
+  .pageHeaderRow h1 {
+    font-size: 1.5rem;
+  }
+
+  .quickActionsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .scheduleItem {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .inlineFields,
+  .checkGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tasksToolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search {
+    max-width: none;
+  }
+
+  .toolbarActions {
+    justify-content: space-between;
+  }
+
+  .materialsHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .materialsActions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .materialsSearch,
+  .uploadBtn {
+    width: 100%;
+  }
+
+  .dataTable {
+    font-size: 0.85rem;
+  }
+
+  .dataTable th,
+  .dataTable td {
+    padding: 10px 8px;
+  }
+}
