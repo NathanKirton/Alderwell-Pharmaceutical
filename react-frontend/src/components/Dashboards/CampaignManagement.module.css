@@ -656,6 +656,29 @@
   border-top: 1px solid #edf1ef;
 }
 
+.flagIconBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #d7dee2;
+  background: #fff;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.flagIconBtn:hover {
+  background: #f8fafb;
+}
+
+.flagIconBtnActive {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
 /* ── Action button group in table cells ── */
 .actionBtns {
   display: flex;

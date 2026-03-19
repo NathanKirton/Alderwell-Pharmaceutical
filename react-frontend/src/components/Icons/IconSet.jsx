@@ -124,3 +124,10 @@ export const ClipboardIcon = ({ size = 24 }) => (
     <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
   </svg>
 )
+
+export const FlagIcon = ({ size = 18, active = false }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={active ? '#dc2626' : 'none'} stroke={active ? '#dc2626' : iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 4v16"></path>
+    <path d="M5 4h10l-2.6 4L15 12H5z"></path>
+  </svg>
+)

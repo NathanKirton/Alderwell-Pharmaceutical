@@ -8,6 +8,7 @@ import {
   CalendarIcon,
   ClipboardIcon,
   FileIcon,
+  FlagIcon,
   UserGroupIcon,
   BarChartIcon,
   VideoIcon,
@@ -167,6 +168,7 @@ export default function LiaisonOfficer() {
   const [materialToReplace, setMaterialToReplace] = useState(null)
   const [isReplacingMaterial, setIsReplacingMaterial] = useState(false)
   const [selectedMaterial, setSelectedMaterial] = useState(null)
+  const [flaggedMaterialIds, setFlaggedMaterialIds] = useState(new Set())
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [loadingVisits, setLoadingVisits] = useState(true)
   const [loadingMaterials, setLoadingMaterials] = useState(true)
@@ -479,6 +481,11 @@ export default function LiaisonOfficer() {
       return
     }
 
+    setFlaggedMaterialIds((prev) => {
+      const next = new Set(prev)
+      next.add(material.id)
+      return next
+    })
     setActionMessage(`Material ${material.name || material.id} flagged for compliance review.`)
   }
 
@@ -827,6 +834,7 @@ export default function LiaisonOfficer() {
                 <div className={campaignStyles.materialsGrid}>
                   {visibleMaterials.map((material) => {
                     const Icon = getFileIcon(material.file_type)
+                    const isFlagged = flaggedMaterialIds.has(material.id)
 
                     return (
                       <div className={campaignStyles.materialCard} key={material.id}>
@@ -846,10 +854,12 @@ export default function LiaisonOfficer() {
                           </button>
                           <button
                             type="button"
-                            className={campaignStyles.linkBtn}
+                            className={`${campaignStyles.flagIconBtn} ${isFlagged ? campaignStyles.flagIconBtnActive : ''}`}
                             onClick={() => handleFlagMaterial(material)}
+                            title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                            aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
                           >
-                            Flag
+                            <FlagIcon size={16} active={isFlagged} />
                           </button>
                           <button
                             type="button"
@@ -897,7 +907,15 @@ export default function LiaisonOfficer() {
                       <p className={campaignStyles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
                       <p className={campaignStyles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
                       <div className={campaignStyles.materialCardActions}>
-                        <button type="button" className={campaignStyles.linkBtn} onClick={() => handleFlagMaterial(selectedMaterial)}>Flag For Compliance</button>
+                        <button
+                          type="button"
+                          className={`${campaignStyles.flagIconBtn} ${flaggedMaterialIds.has(selectedMaterial.id) ? campaignStyles.flagIconBtnActive : ''}`}
+                          onClick={() => handleFlagMaterial(selectedMaterial)}
+                          title={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                          aria-label={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                        >
+                          <FlagIcon size={16} active={flaggedMaterialIds.has(selectedMaterial.id)} />
+                        </button>
                       </div>
                       <h4 style={{ margin: '12px 0 6px' }}>Timeline</h4>
                       <div className={campaignStyles.timelineList}>

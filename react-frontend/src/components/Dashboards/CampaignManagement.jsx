@@ -7,6 +7,7 @@ import {
   CheckCircleIcon,
   ClipboardIcon,
   FileIcon,
+  FlagIcon,
   PlusIcon,
   VideoIcon,
 } from '../Icons/IconSet'
@@ -71,6 +72,7 @@ export default function CampaignManagement() {
   const [materialCampaignFilter, setMaterialCampaignFilter] = useState('all')
   const [approvalFilter, setApprovalFilter] = useState('all')
   const [reportSearch, setReportSearch] = useState('')
+  const [flaggedMaterialIds, setFlaggedMaterialIds] = useState(new Set())
 
   // ─── Modals ───────────────────────────────────────────────────────────
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false)
@@ -383,6 +385,11 @@ export default function CampaignManagement() {
       return
     }
 
+    setFlaggedMaterialIds((prev) => {
+      const next = new Set(prev)
+      next.add(material.id)
+      return next
+    })
     setActionMessage(`Material ${material.name || material.id} flagged for compliance review.`)
   }
 
@@ -671,6 +678,7 @@ export default function CampaignManagement() {
                   <div className={styles.materialsGrid}>
                     {visibleMaterials.map((material) => {
                       const Icon = getFileIcon(material.file_type)
+                      const isFlagged = flaggedMaterialIds.has(material.id)
                       return (
                         <div className={styles.materialCard} key={material.id}>
                           <div className={styles.materialIcon}><Icon size={32} /></div>
@@ -681,7 +689,15 @@ export default function CampaignManagement() {
                           <p className={styles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
                           <div className={styles.materialCardActions}>
                             <button type="button" className={styles.linkBtn} onClick={() => setSelectedMaterial(material)}>Details</button>
-                            <button type="button" className={styles.linkBtn} onClick={() => handleFlagMaterial(material)}>Flag</button>
+                            <button
+                              type="button"
+                              className={`${styles.flagIconBtn} ${isFlagged ? styles.flagIconBtnActive : ''}`}
+                              onClick={() => handleFlagMaterial(material)}
+                              title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                              aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                            >
+                              <FlagIcon size={16} active={isFlagged} />
+                            </button>
                             <button
                               type="button"
                               className={styles.linkBtn}
@@ -984,6 +1000,7 @@ export default function CampaignManagement() {
             <div className={styles.materialsGrid}>
               {materials.filter((m) => m.campaign?.name === selectedCampaign.name).map((material) => {
                 const Icon = getFileIcon(material.file_type)
+                const isFlagged = flaggedMaterialIds.has(material.id)
                 return (
                   <div key={material.id} className={styles.materialCard}>
                     <div className={styles.materialIcon}><Icon size={28} /></div>
@@ -992,7 +1009,15 @@ export default function CampaignManagement() {
                     <p className={styles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
                     <div className={styles.materialCardActions}>
                       <button type="button" className={styles.linkBtn} onClick={() => { setSelectedMaterial(material); setSelectedCampaign(null) }}>Details</button>
-                      <button type="button" className={styles.linkBtn} onClick={() => handleFlagMaterial(material)}>Flag</button>
+                      <button
+                        type="button"
+                        className={`${styles.flagIconBtn} ${isFlagged ? styles.flagIconBtnActive : ''}`}
+                        onClick={() => handleFlagMaterial(material)}
+                        title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                        aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                      >
+                        <FlagIcon size={16} active={isFlagged} />
+                      </button>
                     </div>
                   </div>
                 )
@@ -1027,7 +1052,15 @@ export default function CampaignManagement() {
             <p className={styles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
             <p className={styles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
             <div className={styles.materialCardActions}>
-              <button type="button" className={styles.linkBtn} onClick={() => handleFlagMaterial(selectedMaterial)}>Flag For Compliance</button>
+              <button
+                type="button"
+                className={`${styles.flagIconBtn} ${flaggedMaterialIds.has(selectedMaterial.id) ? styles.flagIconBtnActive : ''}`}
+                onClick={() => handleFlagMaterial(selectedMaterial)}
+                title={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                aria-label={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
+              >
+                <FlagIcon size={16} active={flaggedMaterialIds.has(selectedMaterial.id)} />
+              </button>
             </div>
             <h4 style={{ margin: '12px 0 6px' }}>Timeline</h4>
             <div className={styles.timelineList}>

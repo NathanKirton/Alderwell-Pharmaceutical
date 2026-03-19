@@ -3,7 +3,7 @@ import DashboardTemplate from '../Layout/DashboardTemplate'
 import styles from './ComplianceReviewer.module.css'
 import campaignStyles from './CampaignManagement.module.css'
 import { auditQueries, complianceQueries, materialQueries } from '../../services/supabaseHelpers'
-import { BarChartIcon, CheckCircleIcon, ClipboardIcon, FileIcon, PlusIcon, VideoIcon } from '../Icons/IconSet'
+import { BarChartIcon, CheckCircleIcon, ClipboardIcon, FileIcon, FlagIcon, PlusIcon, VideoIcon } from '../Icons/IconSet'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -315,6 +315,10 @@ export default function ComplianceReviewer() {
       .slice(0, 3)
   }, [flags])
 
+  const flaggedMaterialIds = useMemo(() => {
+    return new Set(flags.map((row) => row.material_id).filter(Boolean))
+  }, [flags])
+
   const trendBars = useMemo(() => {
     const now = new Date()
     const getEventDate = (row) => new Date(row.reviewed_at || row.submission_date || row.updated_at || row.created_at)
@@ -620,6 +624,7 @@ export default function ComplianceReviewer() {
                 <div className={campaignStyles.materialsGrid}>
                   {visibleMaterials.map((material) => {
                     const Icon = getFileIcon(material.file_type)
+                    const isFlagged = flaggedMaterialIds.has(material.id)
                     return (
                       <div className={campaignStyles.materialCard} key={material.id}>
                         <div className={campaignStyles.materialIcon}><Icon size={32} /></div>
@@ -638,10 +643,12 @@ export default function ComplianceReviewer() {
                           </button>
                           <button
                             type="button"
-                            className={campaignStyles.linkBtn}
+                            className={`${campaignStyles.flagIconBtn} ${isFlagged ? campaignStyles.flagIconBtnActive : ''}`}
                             onClick={() => handleFlagMaterial(material)}
+                            title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                            aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
                           >
-                            Flag
+                            <FlagIcon size={16} active={isFlagged} />
                           </button>
                           <button
                             type="button"
@@ -687,7 +694,15 @@ export default function ComplianceReviewer() {
                       <p className={campaignStyles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
                       <p className={campaignStyles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
                       <div className={campaignStyles.materialCardActions}>
-                        <button type="button" className={campaignStyles.linkBtn} onClick={() => handleFlagMaterial(selectedMaterial)}>Flag For Compliance</button>
+                        <button
+                          type="button"
+                          className={`${campaignStyles.flagIconBtn} ${flaggedMaterialIds.has(selectedMaterial.id) ? campaignStyles.flagIconBtnActive : ''}`}
+                          onClick={() => handleFlagMaterial(selectedMaterial)}
+                          title={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                          aria-label={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                        >
+                          <FlagIcon size={16} active={flaggedMaterialIds.has(selectedMaterial.id)} />
+                        </button>
                       </div>
                       <h4 style={{ margin: '12px 0 6px' }}>Timeline</h4>
                       <div className={campaignStyles.timelineList}>
