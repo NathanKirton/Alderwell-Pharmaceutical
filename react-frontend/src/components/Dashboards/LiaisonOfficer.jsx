@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import DashboardTemplate from '../Layout/DashboardTemplate'
 import styles from './LiaisonOfficer.module.css'
 import campaignStyles from './CampaignManagement.module.css'
-import { materialQueries, taskQueries, visitQueries } from '../../services/supabaseHelpers'
+import { complianceQueries, materialQueries, taskQueries, visitQueries } from '../../services/supabaseHelpers'
 import {
   PlusIcon,
   CalendarIcon,
@@ -131,6 +131,28 @@ const getFileIcon = (fileType) => {
   return FileIcon
 }
 
+const getMaterialEditorName = (material) => {
+  return material?.reviewer?.full_name ||
+    material?.reviewer?.email ||
+    material?.uploader?.full_name ||
+    material?.uploader?.email ||
+    'Unknown'
+}
+
+const buildMaterialTimeline = (material) => {
+  if (!material) return []
+  const uploaderName = material.uploader?.full_name || material.uploader?.email || 'Unknown user'
+  const reviewerName = material.reviewer?.full_name || material.reviewer?.email || 'Unknown reviewer'
+  const events = []
+  if (material.created_at) events.push({ id: `c-${material.id}`, label: 'Material created', by: uploaderName, at: material.created_at })
+  if (material.submission_date) events.push({ id: `s-${material.id}`, label: 'Submitted for review', by: uploaderName, at: material.submission_date })
+  if (material.reviewed_at) events.push({ id: `r-${material.id}`, label: `Review completed (${material.status || 'Updated'})`, by: reviewerName, at: material.reviewed_at })
+  if (material.updated_at && material.updated_at !== material.created_at && material.updated_at !== material.reviewed_at) {
+    events.push({ id: `u-${material.id}`, label: 'Material updated', by: uploaderName, at: material.updated_at })
+  }
+  return events.filter((e) => e.at).sort((a, b) => new Date(b.at) - new Date(a.at))
+}
+
 export default function LiaisonOfficer() {
   const [taskList, setTaskList] = useState([])
   const [visits, setVisits] = useState([])
@@ -144,6 +166,7 @@ export default function LiaisonOfficer() {
   const [isUploading, setIsUploading] = useState(false)
   const [materialToReplace, setMaterialToReplace] = useState(null)
   const [isReplacingMaterial, setIsReplacingMaterial] = useState(false)
+  const [selectedMaterial, setSelectedMaterial] = useState(null)
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [loadingVisits, setLoadingVisits] = useState(true)
   const [loadingMaterials, setLoadingMaterials] = useState(true)
@@ -421,6 +444,42 @@ export default function LiaisonOfficer() {
     setIsReplacingMaterial(false)
     event.target.value = ''
     await loadMaterials()
+  }
+
+  const handleFlagMaterial = async (material) => {
+    if (!material?.id) {
+      setActionMessage('Cannot flag this item: missing material id.')
+      return
+    }
+
+    const reasonInput = window.prompt('Why are you flagging this material for compliance review?', `Manual compliance flag for ${material.name || material.id}`)
+    if (reasonInput === null) {
+      return
+    }
+
+    const reason = reasonInput.trim()
+    if (!reason) {
+      setActionMessage('Flag cancelled: reason is required.')
+      return
+    }
+
+    const severityInput = (window.prompt('Flag severity (Low, Medium, High, Critical)', 'Medium') || 'Medium').trim()
+    const normalizedSeverity = severityInput.charAt(0).toUpperCase() + severityInput.slice(1).toLowerCase()
+    const severity = ['Low', 'Medium', 'High', 'Critical'].includes(normalizedSeverity) ? normalizedSeverity : 'Medium'
+
+    const { error } = await complianceQueries.createFlag({
+      material_id: material.id,
+      reason,
+      severity,
+      status: 'Open',
+    })
+
+    if (error) {
+      setActionMessage(`Failed to flag material: ${error}`)
+      return
+    }
+
+    setActionMessage(`Material ${material.name || material.id} flagged for compliance review.`)
   }
 
   return (
@@ -776,14 +835,21 @@ export default function LiaisonOfficer() {
                         <p>{(material.file_type || 'File').toUpperCase()} • {material.status || 'Submitted'}</p>
                         <p className={campaignStyles.rowMeta}>{material.campaign?.name ? `Campaign: ${material.campaign.name}` : 'Unassigned'}</p>
                         <p className={campaignStyles.rowMeta}>Updated {material.updated_at ? new Date(material.updated_at).toLocaleString('en-GB') : 'N/A'}</p>
-                        <p className={campaignStyles.rowMeta}>Last uploaded by {material.uploader?.full_name || material.uploader?.email || 'Unknown'}</p>
+                        <p className={campaignStyles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
                         <div className={campaignStyles.materialCardActions}>
                           <button
                             type="button"
                             className={campaignStyles.linkBtn}
-                            onClick={() => setActionMessage(`${material.name || 'Material'} (${material.id})`)}
+                            onClick={() => setSelectedMaterial(material)}
                           >
                             Details
+                          </button>
+                          <button
+                            type="button"
+                            className={campaignStyles.linkBtn}
+                            onClick={() => handleFlagMaterial(material)}
+                          >
+                            Flag
                           </button>
                           <button
                             type="button"
@@ -818,6 +884,40 @@ export default function LiaisonOfficer() {
                   )}
                   {loadingMaterials && <p className={campaignStyles.rowMeta}>Loading materials...</p>}
                 </div>
+
+                {selectedMaterial && (
+                  <div className={campaignStyles.modalBackdrop} onClick={() => setSelectedMaterial(null)}>
+                    <div className={campaignStyles.modalCard} onClick={(e) => e.stopPropagation()}>
+                      <div className={campaignStyles.cardHeader}>
+                        <h3>{selectedMaterial.name || 'Material details'}</h3>
+                        <button type="button" className={campaignStyles.pageBtn} onClick={() => setSelectedMaterial(null)}>Close</button>
+                      </div>
+                      <p className={campaignStyles.rowMeta}>ID: {selectedMaterial.id}</p>
+                      <p className={campaignStyles.rowMeta}>Status: <strong>{selectedMaterial.status || 'Unknown'}</strong></p>
+                      <p className={campaignStyles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
+                      <p className={campaignStyles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
+                      <div className={campaignStyles.materialCardActions}>
+                        <button type="button" className={campaignStyles.linkBtn} onClick={() => handleFlagMaterial(selectedMaterial)}>Flag For Compliance</button>
+                      </div>
+                      <h4 style={{ margin: '12px 0 6px' }}>Timeline</h4>
+                      <div className={campaignStyles.timelineList}>
+                        {buildMaterialTimeline(selectedMaterial).map((entry) => (
+                          <div key={entry.id} className={campaignStyles.timelineItem}>
+                            <span className={campaignStyles.timelineDot}></span>
+                            <div>
+                              <strong>{entry.label}</strong>
+                              <p className={campaignStyles.rowMeta}>By {entry.by}</p>
+                              <p className={campaignStyles.rowMeta}>{new Date(entry.at).toLocaleString('en-GB')}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {buildMaterialTimeline(selectedMaterial).length === 0 && (
+                          <p className={campaignStyles.rowMeta}>No timeline events available.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )
 

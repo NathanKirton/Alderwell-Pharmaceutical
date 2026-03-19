@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import DashboardTemplate from '../Layout/DashboardTemplate'
 import styles from './CampaignManagement.module.css'
-import { auditQueries, campaignQueries, materialQueries } from '../../services/supabaseHelpers'
+import { auditQueries, campaignQueries, complianceQueries, materialQueries } from '../../services/supabaseHelpers'
 import {
   BarChartIcon,
   CheckCircleIcon,
@@ -38,6 +38,14 @@ const getFileIcon = (fileType) => {
   if (t.includes('pdf')) return BarChartIcon
   if (t.includes('approved')) return CheckCircleIcon
   return FileIcon
+}
+
+const getMaterialEditorName = (material) => {
+  return material?.reviewer?.full_name ||
+    material?.reviewer?.email ||
+    material?.uploader?.full_name ||
+    material?.uploader?.email ||
+    'Unknown'
 }
 
 export default function CampaignManagement() {
@@ -342,6 +350,42 @@ export default function CampaignManagement() {
     e.target.value = ''
   }
 
+  const handleFlagMaterial = async (material) => {
+    if (!material?.id) {
+      setActionMessage('Cannot flag this item: missing material id.')
+      return
+    }
+
+    const reasonInput = window.prompt('Why are you flagging this material for compliance review?', `Manual compliance flag for ${material.name || material.id}`)
+    if (reasonInput === null) {
+      return
+    }
+
+    const reason = reasonInput.trim()
+    if (!reason) {
+      setActionMessage('Flag cancelled: reason is required.')
+      return
+    }
+
+    const severityInput = (window.prompt('Flag severity (Low, Medium, High, Critical)', 'Medium') || 'Medium').trim()
+    const normalizedSeverity = severityInput.charAt(0).toUpperCase() + severityInput.slice(1).toLowerCase()
+    const severity = ['Low', 'Medium', 'High', 'Critical'].includes(normalizedSeverity) ? normalizedSeverity : 'Medium'
+
+    const { error } = await complianceQueries.createFlag({
+      material_id: material.id,
+      reason,
+      severity,
+      status: 'Open',
+    })
+
+    if (error) {
+      setActionMessage(`Failed to flag material: ${error}`)
+      return
+    }
+
+    setActionMessage(`Material ${material.name || material.id} flagged for compliance review.`)
+  }
+
   // ─── Export campaigns CSV ─────────────────────────────────────────────
   const handleExportCsv = () => {
     const header = ['ID', 'Name', 'Status', 'Category', 'Budget', 'Start Date', 'End Date', 'Owner']
@@ -632,11 +676,12 @@ export default function CampaignManagement() {
                           <div className={styles.materialIcon}><Icon size={32} /></div>
                           <h4>{material.name || 'Untitled'}</h4>
                           <p>{(material.file_type || 'file').toUpperCase()} • {material.status || 'Submitted'}</p>
-                          <p className={styles.rowMeta}>{material.campaign?.name ? `Campaign: ${material.campaign.name}` : 'Unassigned'}</p>
+                          <p className={styles.rowMeta}>Campaign: {material.campaign?.name || 'Unassigned'}</p>
                           <p className={styles.rowMeta}>Updated {material.updated_at ? new Date(material.updated_at).toLocaleString('en-GB') : 'N/A'}</p>
-                          <p className={styles.rowMeta}>Last uploaded by {material.uploader?.full_name || material.uploader?.email || 'Unknown'}</p>
+                          <p className={styles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
                           <div className={styles.materialCardActions}>
                             <button type="button" className={styles.linkBtn} onClick={() => setSelectedMaterial(material)}>Details</button>
+                            <button type="button" className={styles.linkBtn} onClick={() => handleFlagMaterial(material)}>Flag</button>
                             <button
                               type="button"
                               className={styles.linkBtn}
@@ -944,9 +989,10 @@ export default function CampaignManagement() {
                     <div className={styles.materialIcon}><Icon size={28} /></div>
                     <h4>{material.name || 'Untitled'}</h4>
                     <p>{(material.file_type || 'file').toUpperCase()} • {material.status || 'Submitted'}</p>
-                    <p className={styles.rowMeta}>Last uploaded by {material.uploader?.full_name || material.uploader?.email || 'Unknown'}</p>
+                    <p className={styles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
                     <div className={styles.materialCardActions}>
                       <button type="button" className={styles.linkBtn} onClick={() => { setSelectedMaterial(material); setSelectedCampaign(null) }}>Details</button>
+                      <button type="button" className={styles.linkBtn} onClick={() => handleFlagMaterial(material)}>Flag</button>
                     </div>
                   </div>
                 )
@@ -979,7 +1025,10 @@ export default function CampaignManagement() {
             <p className={styles.rowMeta}>ID: {selectedMaterial.id}</p>
             <p className={styles.rowMeta}>Status: <strong>{selectedMaterial.status || 'Unknown'}</strong></p>
             <p className={styles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
-            <p className={styles.rowMeta}>Last uploaded by: {selectedMaterial.uploader?.full_name || selectedMaterial.uploader?.email || 'Unknown'}</p>
+            <p className={styles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
+            <div className={styles.materialCardActions}>
+              <button type="button" className={styles.linkBtn} onClick={() => handleFlagMaterial(selectedMaterial)}>Flag For Compliance</button>
+            </div>
             <h4 style={{ margin: '12px 0 6px' }}>Timeline</h4>
             <div className={styles.timelineList}>
               {buildMaterialTimeline(selectedMaterial).map((entry) => (

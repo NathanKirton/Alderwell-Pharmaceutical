@@ -201,7 +201,7 @@ export const materialQueries = {
   getAllMaterials: async () => {
     const { data, error } = await supabase
       .from('materials')
-      .select('id, name, description, file_type, file_url, status, created_at, updated_at, reviewed_at, campaign:campaigns(name), uploader:profiles!materials_uploaded_by_fkey(full_name, email), reviewer:profiles!materials_reviewed_by_fkey(full_name, email)')
+      .select('id, name, description, file_type, file_url, status, created_at, submission_date, updated_at, reviewed_at, campaign:campaigns(id, name), uploader:profiles!materials_uploaded_by_fkey(full_name, email), reviewer:profiles!materials_reviewed_by_fkey(full_name, email)')
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -761,7 +761,7 @@ export const complianceQueries = {
   getFlags: async (filters = {}) => {
     let query = supabase
       .from('compliance_flags')
-      .select('*, flagged_by:profiles!compliance_flags_flagged_by_fkey(full_name), reviewer:profiles!compliance_flags_reviewer_id_fkey(full_name)')
+      .select('*, material:materials(id, name, status, campaign:campaigns(name)), flagged_by:profiles!compliance_flags_flagged_by_fkey(full_name), reviewer:profiles!compliance_flags_reviewer_id_fkey(full_name)')
 
     if (filters.status) {
       query = query.eq('status', filters.status)
@@ -781,6 +781,10 @@ export const complianceQueries = {
   createFlag: async (flagData) => {
     const { data: { user } } = await supabase.auth.getUser()
 
+    if (!user) {
+      return { data: null, error: 'Not authenticated.' }
+    }
+
     const { data, error } = await supabase
       .from('compliance_flags')
       .insert({
@@ -790,8 +794,12 @@ export const complianceQueries = {
       })
       .select()
 
-    if (error) console.error('Flag creation error:', error)
-    return data
+    if (error) {
+      console.error('Flag creation error:', error)
+      return { data: null, error: error.message || 'Failed to create compliance flag.' }
+    }
+
+    return { data: data?.[0] || null, error: null }
   },
 
   // Resolve flag
