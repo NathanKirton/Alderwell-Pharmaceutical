@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getRoleDashboardPath } from '../../utils/roleUtils'
 import styles from './Login.module.css'
@@ -99,9 +99,9 @@ export default function Login() {
 
             <label className={styles.inputLabel}>
               PASSWORD
-              <a href="/signup" className={styles.forgot}>
+              <Link to="/signup" className={styles.forgot}>
                 Sign Up Here
-              </a>
+              </Link>
             </label>
             <div className={styles.inputGroup}>
               <span className={styles.inputIcon}>
