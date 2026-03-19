@@ -300,23 +300,6 @@ export default function CampaignManagement() {
     await loadAll()
   }
 
-  // ─── Approval actions ─────────────────────────────────────────────────
-  const handleApproveMaterial = async (id) => {
-    const item = pendingApprovals.find((r) => r.id === id)
-    const { error } = await materialQueries.reviewMaterial(id, 'Approved', 'Approved from Campaign Management')
-    if (error) { setActionMessage(`Approval failed: ${error}`); return }
-    setActionMessage(`${item?.name || id} approved.`)
-    await loadAll()
-  }
-
-  const handleRejectMaterial = async (id) => {
-    const item = pendingApprovals.find((r) => r.id === id)
-    const { error } = await materialQueries.reviewMaterial(id, 'Rejected', 'Rejected from Campaign Management')
-    if (error) { setActionMessage(`Rejection failed: ${error}`); return }
-    setActionMessage(`${item?.name || id} rejected.`)
-    await loadAll()
-  }
-
   // ─── Upload modal ─────────────────────────────────────────────────────
   const openUploadModal = (preselectedCampaignId = '') => {
     setUploadForm({ campaignId: preselectedCampaignId, folderId: '', name: '' })
@@ -570,7 +553,7 @@ export default function CampaignManagement() {
                             <th>Material</th>
                             <th>Campaign</th>
                             <th>Uploaded by</th>
-                            <th>Actions</th>
+                            <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -583,9 +566,8 @@ export default function CampaignManagement() {
                               <td>{item.campaign?.name || 'Unassigned'}</td>
                               <td>{item.uploaded_by?.full_name || item.uploaded_by?.email || 'Unknown'}</td>
                               <td>
-                                <button type="button" className={styles.iconBtn} title="Approve" onClick={() => handleApproveMaterial(item.id)}>✓</button>
-                                {' '}
-                                <button type="button" className={styles.iconBtn} title="Reject" onClick={() => handleRejectMaterial(item.id)}>✕</button>
+                                <span className={styles.badge}>{item.status || 'Submitted'}</span>
+                                <p className={styles.rowMeta}>Compliance reviewer action required</p>
                               </td>
                             </tr>
                           ))}
@@ -876,7 +858,7 @@ export default function CampaignManagement() {
                           <th>Uploaded by</th>
                           <th>Submitted</th>
                           <th>Type</th>
-                          <th>Actions</th>
+                          <th>Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -891,9 +873,8 @@ export default function CampaignManagement() {
                             <td>{row.submission_date ? new Date(row.submission_date).toLocaleDateString('en-GB') : '—'}</td>
                             <td><span className={styles.badge}>{row.file_type || 'file'}</span></td>
                             <td>
-                              <button type="button" className={styles.primaryMiniBtn} onClick={() => handleApproveMaterial(row.id)}>Approve</button>
-                              {' '}
-                              <button type="button" className={styles.secondaryMiniBtn} onClick={() => handleRejectMaterial(row.id)}>Reject</button>
+                              <span className={styles.badge}>{row.status || 'Submitted'}</span>
+                              <p className={styles.rowMeta}>Read-only in Campaign Management</p>
                             </td>
                           </tr>
                         ))}
