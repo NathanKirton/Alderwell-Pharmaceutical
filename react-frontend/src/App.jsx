@@ -3,7 +3,6 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import Login from './components/LoginSignupScreen/Login'
-import Signup from './components/LoginSignupScreen/Signup'
 import Admin from './components/Dashboards/Admin'
 import MarketingSales from './components/Dashboards/MarketingSales'
 import ComplianceReviewer from './components/Dashboards/ComplianceReviewer'
@@ -27,18 +26,18 @@ function EntryRedirect() {
   return <Navigate to={getRoleDashboardPath(userProfile?.role || cachedRole || 'no_role')} replace />
 }
 
-function LoginRoute() {
+function LoginRoute({ initialMode = 'login' }) {
   const { user, userProfile, cachedRole, loading } = useAuth()
 
   if (loading) {
-    return <Login />
+    return <Login initialMode={initialMode} />
   }
 
   if (user) {
     return <Navigate to={getRoleDashboardPath(userProfile?.role || cachedRole || 'no_role')} replace />
   }
 
-  return <Login />
+  return <Login initialMode={initialMode} />
 }
 
 function App() {
@@ -47,7 +46,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginRoute />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/signup" element={<LoginRoute initialMode="signup" />} />
           <Route
             path="/admin"
             element={

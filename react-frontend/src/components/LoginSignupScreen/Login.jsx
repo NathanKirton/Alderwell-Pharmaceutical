@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getRoleDashboardPath } from '../../utils/roleUtils'
 import styles from './Login.module.css'
 
-export default function Login() {
+export default function Login({ initialMode = 'login' }) {
+  const [mode, setMode] = useState(initialMode === 'signup' ? 'signup' : 'login')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [staySignedIn, setStaySignedIn] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('') // 'error' or 'success'
   const navigate = useNavigate()
-  const { signIn, user, userProfile, loading } = useAuth()
+  const { signIn, signUp, user, userProfile, loading } = useAuth()
+
+  useEffect(() => {
+    setMode(initialMode === 'signup' ? 'signup' : 'login')
+  }, [initialMode])
 
   // Always leave login once there is an authenticated user.
   // If role is missing, route to no-access as a safe fallback.
@@ -28,6 +35,28 @@ export default function Login() {
     setMessageType('')
 
     try {
+      if (mode === 'signup') {
+        if (!fullName.trim()) {
+          setMessage('Please enter your full name.')
+          setMessageType('error')
+          return
+        }
+
+        if (password !== confirmPassword) {
+          setMessage('Passwords do not match.')
+          setMessageType('error')
+          return
+        }
+
+        await signUp(email, password, fullName.trim())
+        setMessage('Account created successfully. Please sign in.')
+        setMessageType('success')
+        setMode('login')
+        setPassword('')
+        setConfirmPassword('')
+        return
+      }
+
       const authResult = await signIn(email, password)
 
       // Handle 'stay signed in' if needed
@@ -69,13 +98,41 @@ export default function Login() {
       {/* RIGHT PANEL */}
       <div className={styles.loginRight}>
         <div className={styles.loginCard}>
-          <h2 className={styles.welcome}>Welcome Back</h2>
+          <h2 className={styles.welcome}>{mode === 'signup' ? 'Create Account' : 'Welcome Back'}</h2>
           <p className={styles.subtitle}>
-            Please enter your credentials to access your campaign dashboard.
+            {mode === 'signup'
+              ? 'Sign up to access your campaign dashboard.'
+              : 'Please enter your credentials to access your campaign dashboard.'}
           </p>
 
           <form onSubmit={handleSubmit}>
-            <label className={styles.inputLabel}>EMAIL OR USERNAME</label>
+            {mode === 'signup' && (
+              <>
+                <label className={styles.inputLabel}>FULL NAME</label>
+                <div className={styles.inputGroup}>
+                  <span className={styles.inputIcon}>
+                    <svg
+                      width="18"
+                      height="18"
+                      fill="#aab0b6"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 12c2.7 0 8 1.34 8 4v2H4v-2c0-2.66 5.3-4 8-4zm0-2a4 4 0 1 1 0-8 4 4 0 0 1 0 8z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    id="full_name"
+                    placeholder="Full Name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            <label className={styles.inputLabel}>{mode === 'signup' ? 'EMAIL' : 'EMAIL OR USERNAME'}</label>
             <div className={styles.inputGroup}>
               <span className={styles.inputIcon}>
                 <svg
@@ -99,9 +156,17 @@ export default function Login() {
 
             <label className={styles.inputLabel}>
               PASSWORD
-              <Link to="/signup" className={styles.forgot}>
-                Sign Up Here
-              </Link>
+              <button
+                type="button"
+                className={styles.forgot}
+                onClick={() => {
+                  setMode((prev) => (prev === 'signup' ? 'login' : 'signup'))
+                  setMessage('')
+                  setMessageType('')
+                }}
+              >
+                {mode === 'signup' ? 'Back to Sign In' : 'Sign Up Here'}
+              </button>
             </label>
             <div className={styles.inputGroup}>
               <span className={styles.inputIcon}>
@@ -124,20 +189,48 @@ export default function Login() {
               />
             </div>
 
-            <div className={styles.optionsRow}>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  id="stay-signed-in"
-                  checked={staySignedIn}
-                  onChange={(e) => setStaySignedIn(e.target.checked)}
-                />
-                Stay signed in for 30 days
-              </label>
-            </div>
+            {mode === 'signup' && (
+              <>
+                <label className={styles.inputLabel}>CONFIRM PASSWORD</label>
+                <div className={styles.inputGroup}>
+                  <span className={styles.inputIcon}>
+                    <svg
+                      width="18"
+                      height="18"
+                      fill="#aab0b6"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6-7V7a6 6 0 0 0-12 0v3a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zm-8-3a4 4 0 0 1 8 0v3H6V7zm10 12H6v-7h12v7z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="password"
+                    id="confirm_password"
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            {mode === 'login' && (
+              <div className={styles.optionsRow}>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    id="stay-signed-in"
+                    checked={staySignedIn}
+                    onChange={(e) => setStaySignedIn(e.target.checked)}
+                  />
+                  Stay signed in for 30 days
+                </label>
+              </div>
+            )}
 
             <button type="submit" className={styles.submitButton}>
-              Sign In to Dashboard <span className={styles.arrow}>→</span>
+              {mode === 'signup' ? 'Sign Up' : 'Sign In to Dashboard'} <span className={styles.arrow}>→</span>
             </button>
           </form>
 
@@ -155,7 +248,7 @@ export default function Login() {
 
           <div className={styles.formFooter}>
             <small>
-              By signing in, you agree to our{' '}
+              By {mode === 'signup' ? 'signing up' : 'signing in'}, you agree to our{' '}
               <a href="/terms">Terms of Service</a> and{' '}
               <a href="/privacy">Privacy Policy</a>
             </small>
