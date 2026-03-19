@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import DashboardTemplate from '../Layout/DashboardTemplate'
 import styles from './ComplianceReviewer.module.css'
+import campaignStyles from './CampaignManagement.module.css'
 import { auditQueries, complianceQueries, materialQueries } from '../../services/supabaseHelpers'
-import { BarChartIcon, ClipboardIcon, FileIcon, VideoIcon } from '../Icons/IconSet'
+import { BarChartIcon, CheckCircleIcon, ClipboardIcon, FileIcon, PlusIcon, VideoIcon } from '../Icons/IconSet'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -13,12 +14,23 @@ const TABS = [
   { id: 'reporting-analytics', label: 'Reporting & Analytics' },
 ]
 
+const getFileIcon = (fileType) => {
+  const t = (fileType || '').toLowerCase()
+  if (t.includes('mp4') || t.includes('mov') || t.includes('avi') || t.includes('video')) return VideoIcon
+  if (t.includes('ppt') || t.includes('presentation') || t.includes('pptx')) return ClipboardIcon
+  if (t.includes('pdf')) return BarChartIcon
+  if (t.includes('approved')) return CheckCircleIcon
+  return FileIcon
+}
+
 export default function ComplianceReviewer() {
   const [actionMessage, setActionMessage] = useState('')
   const [trendScope, setTrendScope] = useState('Week')
   const [auditTab, setAuditTab] = useState('all')
   const [flagTab, setFlagTab] = useState('pending')
   const [materialSearch, setMaterialSearch] = useState('')
+  const [materialTypeFilter, setMaterialTypeFilter] = useState('all')
+  const [materialCampaignFilter, setMaterialCampaignFilter] = useState('all')
   const [batchNote, setBatchNote] = useState('')
   const [reviewNotes, setReviewNotes] = useState({})
   const [materials, setMaterials] = useState([])
@@ -186,14 +198,35 @@ export default function ComplianceReviewer() {
 
   const visibleMaterials = useMemo(() => {
     const q = materialSearch.trim().toLowerCase()
-    if (!q) return materials
-    return materials.filter((row) => (
-      (row.name || '').toLowerCase().includes(q) ||
-      (row.description || '').toLowerCase().includes(q) ||
-      (row.file_type || '').toLowerCase().includes(q) ||
-      (row.status || '').toLowerCase().includes(q)
-    ))
-  }, [materials, materialSearch])
+    return materials.filter((row) => {
+      const type = (row.file_type || '').toLowerCase()
+      const campaignName = (row.campaign?.name || '').toLowerCase()
+      const status = (row.status || '').toLowerCase()
+
+      const matchesSearch = !q ||
+        (row.name || '').toLowerCase().includes(q) ||
+        (row.description || '').toLowerCase().includes(q) ||
+        type.includes(q) ||
+        status.includes(q)
+
+      const matchesType = materialTypeFilter === 'all' ||
+        (materialTypeFilter === 'pdf' && type.includes('pdf')) ||
+        (materialTypeFilter === 'video' && (type.includes('video') || type.includes('mp4') || type.includes('mov') || type.includes('avi'))) ||
+        (materialTypeFilter === 'image' && (type.includes('image') || type.includes('png') || type.includes('jpg') || type.includes('jpeg') || type.includes('gif') || type.includes('webp') || type.includes('svg'))) ||
+        (materialTypeFilter === 'ppt' && (type.includes('presentation') || type.includes('ppt') || type.includes('pptx'))) ||
+        (materialTypeFilter === 'other' && !type.includes('pdf') && !type.includes('video') && !type.includes('mp4') && !type.includes('mov') && !type.includes('avi') && !type.includes('image') && !type.includes('png') && !type.includes('jpg') && !type.includes('jpeg') && !type.includes('gif') && !type.includes('webp') && !type.includes('svg') && !type.includes('presentation') && !type.includes('ppt') && !type.includes('pptx'))
+
+      const matchesCampaign = materialCampaignFilter === 'all' ||
+        (materialCampaignFilter === 'unassigned' && !campaignName) ||
+        campaignName === materialCampaignFilter.toLowerCase()
+
+      return matchesSearch && matchesType && matchesCampaign
+    })
+  }, [materials, materialSearch, materialTypeFilter, materialCampaignFilter])
+
+  const campaignNames = useMemo(() => {
+    return Array.from(new Set(materials.map((item) => item.campaign?.name).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  }, [materials])
 
   const filteredAuditLogs = useMemo(() => {
     if (auditTab === 'all') return auditLogs
@@ -456,71 +489,106 @@ export default function ComplianceReviewer() {
             return (
               <div className={styles.tabContent}>
                 {actionMessage && <p className={styles.rowMeta}>{actionMessage}</p>}
-                <div className={styles.materialsHeader}>
-                  <h2>Materials Library</h2>
-                  <div className={styles.materialsActions}>
-                    <input
-                      type="text"
-                      className={styles.materialsSearch}
-                      placeholder="Search materials..."
-                      value={materialSearch}
-                      onChange={(e) => setMaterialSearch(e.target.value)}
-                    />
-                    <input
-                      ref={uploadInputRef}
-                      type="file"
-                      hidden
-                      onChange={handleMaterialFileSelected}
-                    />
-                    <input
-                      ref={replaceMaterialInputRef}
-                      type="file"
-                      hidden
-                      onChange={handleReplaceMaterialSelected}
-                    />
-                    <button
-                      type="button"
-                      className={styles.uploadBtn}
-                      onClick={handleUploadClick}
-                      disabled={isUploading}
-                    >
-                      {isUploading ? 'Uploading...' : 'Upload'}
-                    </button>
+                <input
+                  ref={uploadInputRef}
+                  type="file"
+                  hidden
+                  onChange={handleMaterialFileSelected}
+                />
+                <input
+                  ref={replaceMaterialInputRef}
+                  type="file"
+                  hidden
+                  onChange={handleReplaceMaterialSelected}
+                />
+
+                <div className={campaignStyles.pageHeaderRow}>
+                  <div>
+                    <h1>Materials Library</h1>
+                    <p>Manage and organise your campaign assets. {materials.length} total.</p>
                   </div>
+                  <button
+                    type="button"
+                    className={campaignStyles.primaryBtn}
+                    onClick={handleUploadClick}
+                    disabled={isUploading}
+                  >
+                    <PlusIcon size={16} /> {isUploading ? 'Uploading...' : 'Upload Material'}
+                  </button>
                 </div>
 
-                <div className={styles.materialsGrid}>
-                  {visibleMaterials.map((material) => {
-                    const lowerType = (material.file_type || '').toLowerCase()
-                    let Icon = FileIcon
-                    if (lowerType.includes('mp4') || lowerType.includes('video')) Icon = VideoIcon
-                    if (lowerType.includes('pdf')) Icon = BarChartIcon
-                    if (lowerType.includes('ppt') || lowerType.includes('presentation')) Icon = ClipboardIcon
+                <div className={campaignStyles.toolbar}>
+                  <input
+                    className={campaignStyles.searchInput}
+                    placeholder="Search materials by name, type or status..."
+                    value={materialSearch}
+                    onChange={(e) => setMaterialSearch(e.target.value)}
+                  />
+                  <select
+                    className={campaignStyles.filterSelect}
+                    value={materialCampaignFilter}
+                    onChange={(e) => setMaterialCampaignFilter(e.target.value)}
+                  >
+                    <option value="all">All Campaigns</option>
+                    <option value="unassigned">Unassigned</option>
+                    {campaignNames.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
 
+                <div className={campaignStyles.materialTabs}>
+                  {[
+                    { id: 'all', label: 'All Assets' },
+                    { id: 'pdf', label: 'PDFs' },
+                    { id: 'video', label: 'Videos' },
+                    { id: 'image', label: 'Images' },
+                    { id: 'ppt', label: 'Presentations' },
+                    { id: 'other', label: 'Other' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      className={`${campaignStyles.tabPill} ${materialTypeFilter === tab.id ? campaignStyles.activePill : ''}`}
+                      onClick={() => setMaterialTypeFilter(tab.id)}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className={campaignStyles.materialsGrid}>
+                  {visibleMaterials.map((material) => {
+                    const Icon = getFileIcon(material.file_type)
                     return (
-                      <div className={styles.materialCard} key={material.id}>
-                        <div className={styles.materialIcon}><Icon size={32} /></div>
-                        <h4>{material.name || 'Untitled Material'}</h4>
+                      <div className={campaignStyles.materialCard} key={material.id}>
+                        <div className={campaignStyles.materialIcon}><Icon size={32} /></div>
+                        <h4>{material.name || 'Untitled'}</h4>
                         <p>{(material.file_type || 'file').toUpperCase()} • {material.status || 'Submitted'}</p>
-                        <p className={styles.materialMeta}>
-                          Updated {material.updated_at ? new Date(material.updated_at).toLocaleString('en-GB') : 'N/A'}
-                        </p>
-                        <p className={styles.materialMeta}>
-                          Last uploaded by {material.uploader?.full_name || material.uploader?.email || 'Unknown'}
-                        </p>
-                        <div className={styles.materialCardActions}>
+                        <p className={campaignStyles.rowMeta}>{material.campaign?.name ? `Campaign: ${material.campaign.name}` : 'Unassigned'}</p>
+                        <p className={campaignStyles.rowMeta}>Updated {material.updated_at ? new Date(material.updated_at).toLocaleString('en-GB') : 'N/A'}</p>
+                        <p className={campaignStyles.rowMeta}>Last uploaded by {material.uploader?.full_name || material.uploader?.email || 'Unknown'}</p>
+                        <div className={campaignStyles.materialCardActions}>
                           <button
                             type="button"
-                            className={styles.linkBtn}
-                            onClick={() => handleReplaceMaterialClick(material)}
-                            disabled={isReplacingMaterial}
+                            className={campaignStyles.linkBtn}
+                            onClick={() => setActionMessage(`${material.name || 'Material'} (${material.id})`)}
                           >
-                            {isReplacingMaterial && materialToReplace?.id === material.id ? 'Updating...' : 'Replace File'}
+                            Details
                           </button>
                           <button
                             type="button"
-                            className={styles.linkBtn}
+                            className={campaignStyles.linkBtn}
+                            onClick={() => handleReplaceMaterialClick(material)}
+                            disabled={isReplacingMaterial}
+                          >
+                            {isReplacingMaterial && materialToReplace?.id === material.id ? 'Updating…' : 'Replace'}
+                          </button>
+                          <button
+                            type="button"
+                            className={campaignStyles.linkBtn}
                             disabled={(material.status || '').toLowerCase() !== 'approved'}
+                            title={(material.status || '').toLowerCase() !== 'approved' ? 'Only approved materials can be downloaded' : 'Download file'}
                             onClick={async () => {
                               const { data, error } = await materialQueries.getApprovedMaterialDownloadUrl(material)
                               if (error) {
@@ -528,7 +596,6 @@ export default function ComplianceReviewer() {
                                 return
                               }
                               window.open(data.url, '_blank', 'noopener,noreferrer')
-                              setActionMessage(`Opened ${material.name}.`)
                             }}
                           >
                             Download
@@ -537,7 +604,8 @@ export default function ComplianceReviewer() {
                       </div>
                     )
                   })}
-                  {visibleMaterials.length === 0 && <p className={styles.rowMeta}>No materials found.</p>}
+                  {!loading && visibleMaterials.length === 0 && <p className={campaignStyles.rowMeta}>No materials found.</p>}
+                  {loading && <p className={campaignStyles.rowMeta}>Loading materials...</p>}
                 </div>
               </div>
             )
