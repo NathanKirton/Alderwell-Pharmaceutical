@@ -199,17 +199,26 @@ export const campaignQueries = {
 export const materialQueries = {
   // Get all materials
   getAllMaterials: async () => {
-    const { data, error } = await supabase
+    const enhancedQuery = await supabase
       .from('materials')
-      .select('id, name, description, file_type, file_url, status, created_at, submission_date, updated_at, reviewed_at, campaign:campaigns(id, name), uploader:profiles!materials_uploaded_by_fkey(full_name, email), reviewer:profiles!materials_reviewed_by_fkey(full_name, email)')
+      .select('id, name, description, file_type, file_url, status, created_at, submission_date, updated_at, reviewed_at, campaign_id, folder_id, campaign:campaigns(id, name), folder:material_folders(id, name, campaign_id), uploader:profiles!materials_uploaded_by_fkey(full_name, email), reviewer:profiles!materials_reviewed_by_fkey(full_name, email)')
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Materials fetch error:', error)
-      return { data: [], error: error.message || 'Failed to load materials.' }
+    if (!enhancedQuery.error) {
+      return { data: enhancedQuery.data || [], error: null }
     }
 
-    return { data: data || [], error: null }
+    const fallbackQuery = await supabase
+      .from('materials')
+      .select('id, name, description, file_type, file_url, status, created_at, submission_date, updated_at, reviewed_at, campaign_id, campaign:campaigns(id, name), uploader:profiles!materials_uploaded_by_fkey(full_name, email), reviewer:profiles!materials_reviewed_by_fkey(full_name, email)')
+      .order('created_at', { ascending: false })
+
+    if (fallbackQuery.error) {
+      console.error('Materials fetch error:', fallbackQuery.error)
+      return { data: [], error: fallbackQuery.error.message || 'Failed to load materials.' }
+    }
+
+    return { data: fallbackQuery.data || [], error: null }
   },
 
   // Get all materials for a campaign
@@ -315,6 +324,7 @@ export const materialQueries = {
       .insert({
         campaign_id: campaignId,
         ...materialData,
+        folder_id: materialData?.folder_id || null,
         file_type: fileExt,
         file_url: urlData.publicUrl,
         uploaded_by: user.id,
@@ -796,6 +806,12 @@ export const complianceQueries = {
 
     if (error) {
       console.error('Flag creation error:', error)
+      if ((error.message || '').toLowerCase().includes('row-level security') && (error.message || '').toLowerCase().includes('compliance_flags')) {
+        return {
+          data: null,
+          error: 'Failed to create compliance flag due to RLS policy. Run fix-compliance-flags-and-material-folders.sql in Supabase SQL Editor, then retry.',
+        }
+      }
       return { data: null, error: error.message || 'Failed to create compliance flag.' }
     }
 
@@ -820,6 +836,66 @@ export const complianceQueries = {
     if (error) console.error('Flag update error:', error)
     return data
   }
+}
+
+export const folderQueries = {
+  getFolders: async () => {
+    const { data, error } = await supabase
+      .from('material_folders')
+      .select('id, name, campaign_id, created_at, campaign:campaigns(id, name)')
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Folder fetch error:', error)
+      return { data: [], error: error.message || 'Failed to load folders.' }
+    }
+
+    return { data: data || [], error: null }
+  },
+
+  createFolder: async ({ name, campaignId = null }) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { data: null, error: 'Not authenticated.' }
+    }
+
+    const { data, error } = await supabase
+      .from('material_folders')
+      .insert({
+        name,
+        campaign_id: campaignId,
+        created_by: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select('id, name, campaign_id')
+
+    if (error) {
+      console.error('Folder creation error:', error)
+      return { data: null, error: error.message || 'Failed to create folder.' }
+    }
+
+    return { data: data?.[0] || null, error: null }
+  },
+}
+
+materialQueries.assignMaterialToCampaign = async (materialId, campaignId, folderId = null) => {
+  const { data, error } = await supabase
+    .from('materials')
+    .update({
+      campaign_id: campaignId,
+      folder_id: folderId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', materialId)
+    .select('id, name, campaign_id, folder_id')
+
+  if (error) {
+    console.error('Assign material to campaign error:', error)
+    return { data: null, error: error.message || 'Failed to assign material to campaign.' }
+  }
+
+  return { data: data?.[0] || null, error: null }
 }
 
 // ============================================================================
@@ -899,6 +975,7 @@ const supabaseHelpers = {
   profileQueries,
   campaignQueries,
   materialQueries,
+  folderQueries,
   hcpQueries,
   visitQueries,
   taskQueries,

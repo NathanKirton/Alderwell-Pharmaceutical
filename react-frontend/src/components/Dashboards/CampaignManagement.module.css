@@ -364,6 +364,13 @@
   border: 1.5px solid #e3e8e4;
   border-radius: 12px;
   padding: 14px;
+  position: relative;
+}
+
+.cardFlagTopRight {
+  position: absolute;
+  top: 10px;
+  right: 10px;
 }
 
 .materialIcon {
@@ -705,8 +712,56 @@
   box-shadow: 0 0 0 3px rgba(46, 77, 61, 0.07);
 }
 
+.folderControls {
+  border: 1.5px solid #e3e8e4;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+  display: grid;
+  gap: 10px;
+}
+
+.folderControls h3 {
+  margin: 0;
+  color: #1f2937;
+}
+
+.folderControlRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.folderPills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.assignmentBox {
+  border: 1px solid #e8edef;
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.assignmentRow {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
 @media (max-width: 600px) {
   .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .folderControlRow,
+  .assignmentRow {
     grid-template-columns: 1fr;
   }
 }

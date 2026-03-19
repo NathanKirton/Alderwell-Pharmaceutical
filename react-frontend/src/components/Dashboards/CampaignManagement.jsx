@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import DashboardTemplate from '../Layout/DashboardTemplate'
 import styles from './CampaignManagement.module.css'
-import { auditQueries, campaignQueries, complianceQueries, materialQueries } from '../../services/supabaseHelpers'
+import { auditQueries, campaignQueries, complianceQueries, folderQueries, materialQueries } from '../../services/supabaseHelpers'
 import {
   BarChartIcon,
   CheckCircleIcon,
@@ -53,6 +53,7 @@ export default function CampaignManagement() {
   // ─── Data state ───────────────────────────────────────────────────────
   const [campaigns, setCampaigns] = useState([])
   const [materials, setMaterials] = useState([])
+  const [folders, setFolders] = useState([])
   const [pendingApprovals, setPendingApprovals] = useState([])
   const [activityLogs, setActivityLogs] = useState([])
 
@@ -70,8 +71,13 @@ export default function CampaignManagement() {
   const [materialSearch, setMaterialSearch] = useState('')
   const [materialTypeFilter, setMaterialTypeFilter] = useState('all')
   const [materialCampaignFilter, setMaterialCampaignFilter] = useState('all')
+  const [materialFolderFilter, setMaterialFolderFilter] = useState('all')
   const [approvalFilter, setApprovalFilter] = useState('all')
   const [reportSearch, setReportSearch] = useState('')
+  const [newFolderName, setNewFolderName] = useState('')
+  const [newFolderCampaignId, setNewFolderCampaignId] = useState('')
+  const [assignMaterialId, setAssignMaterialId] = useState('')
+  const [assignFolderId, setAssignFolderId] = useState('')
   const [flaggedMaterialIds, setFlaggedMaterialIds] = useState(new Set())
 
   // ─── Modals ───────────────────────────────────────────────────────────
@@ -83,7 +89,7 @@ export default function CampaignManagement() {
   const [selectedMaterial, setSelectedMaterial] = useState(null)
   const [materialToReplace, setMaterialToReplace] = useState(null)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
-  const [uploadForm, setUploadForm] = useState({ campaignId: '', name: '' })
+  const [uploadForm, setUploadForm] = useState({ campaignId: '', folderId: '', name: '' })
   const [uploadFile, setUploadFile] = useState(null)
 
   // ─── Refs ─────────────────────────────────────────────────────────────
@@ -99,11 +105,12 @@ export default function CampaignManagement() {
     setLoadingMaterials(true)
     setLoadingApprovals(true)
 
-    const [campaignsRes, materialsRes, approvalsRes, logs] = await Promise.all([
+    const [campaignsRes, materialsRes, approvalsRes, logs, foldersRes] = await Promise.all([
       campaignQueries.getAllCampaigns(),
       materialQueries.getAllMaterials(),
       materialQueries.getPendingApprovals(),
       auditQueries.getActivityLogs(),
+      folderQueries.getFolders(),
     ])
 
     if (campaignsRes.error) setActionMessage(`Campaigns: ${campaignsRes.error}`)
@@ -114,6 +121,7 @@ export default function CampaignManagement() {
     setMaterials(materialsRes.data || [])
     setPendingApprovals(approvalsRes.data || [])
     setActivityLogs(Array.isArray(logs) ? logs : [])
+    setFolders(foldersRes.data || [])
 
     setLoadingCampaigns(false)
     setLoadingMaterials(false)
@@ -159,8 +167,15 @@ export default function CampaignManagement() {
           : m.campaign?.name === materialCampaignFilter
       )
     }
+    if (materialFolderFilter !== 'all') {
+      result = result.filter((m) =>
+        materialFolderFilter === 'unassigned'
+          ? !m.folder?.id
+          : m.folder?.id === materialFolderFilter
+      )
+    }
     return result
-  }, [materials, materialSearch, materialTypeFilter, materialCampaignFilter])
+  }, [materials, materialSearch, materialTypeFilter, materialCampaignFilter, materialFolderFilter])
 
   const filteredApprovals = useMemo(() => {
     if (approvalFilter === 'all') return pendingApprovals
@@ -182,6 +197,14 @@ export default function CampaignManagement() {
     const names = materials.map((m) => m.campaign?.name).filter(Boolean)
     return [...new Set(names)].sort()
   }, [materials])
+
+  const visibleFolders = useMemo(() => {
+    if (materialCampaignFilter === 'all' || materialCampaignFilter === 'unassigned') {
+      return folders
+    }
+    const campaign = campaigns.find((c) => c.name === materialCampaignFilter)
+    return folders.filter((folder) => folder.campaign_id === campaign?.id)
+  }, [folders, materialCampaignFilter, campaigns])
 
   const materialsByCampaign = useMemo(() => {
     const result = {}
@@ -296,7 +319,7 @@ export default function CampaignManagement() {
 
   // ─── Upload modal ─────────────────────────────────────────────────────
   const openUploadModal = (preselectedCampaignId = '') => {
-    setUploadForm({ campaignId: preselectedCampaignId, name: '' })
+    setUploadForm({ campaignId: preselectedCampaignId, folderId: '', name: '' })
     setUploadFile(null)
     setIsUploadModalOpen(true)
   }
@@ -315,7 +338,11 @@ export default function CampaignManagement() {
     setActionMessage('Uploading...')
     const { error } = await materialQueries.submitMaterial(
       uploadForm.campaignId || null,
-      { name: uploadForm.name.trim(), description: 'Uploaded from Campaign Management' },
+      {
+        name: uploadForm.name.trim(),
+        description: 'Uploaded from Campaign Management',
+        folder_id: uploadForm.folderId || null,
+      },
       uploadFile
     )
     if (error) {
@@ -326,6 +353,46 @@ export default function CampaignManagement() {
       await loadAll()
     }
     setIsUploading(false)
+  }
+
+  const handleCreateFolder = async () => {
+    const trimmedName = newFolderName.trim()
+    if (!trimmedName) {
+      setActionMessage('Folder name is required.')
+      return
+    }
+
+    const { error } = await folderQueries.createFolder({
+      name: trimmedName,
+      campaignId: newFolderCampaignId || null,
+    })
+
+    if (error) {
+      setActionMessage(`Folder creation failed: ${error}`)
+      return
+    }
+
+    setActionMessage(`Folder "${trimmedName}" created.`)
+    setNewFolderName('')
+    await loadAll()
+  }
+
+  const handleAssignMaterialToCampaign = async (campaignId) => {
+    if (!assignMaterialId) {
+      setActionMessage('Choose a material to assign.')
+      return
+    }
+
+    const { data, error } = await materialQueries.assignMaterialToCampaign(assignMaterialId, campaignId, assignFolderId || null)
+    if (error) {
+      setActionMessage(`Material assignment failed: ${error}`)
+      return
+    }
+
+    setActionMessage(`${data?.name || assignMaterialId} assigned to campaign.`)
+    setAssignMaterialId('')
+    setAssignFolderId('')
+    await loadAll()
   }
 
   // ─── Replace file ─────────────────────────────────────────────────────
@@ -653,6 +720,46 @@ export default function CampaignManagement() {
                         <option key={name} value={name}>{name}</option>
                       ))}
                     </select>
+                    <select
+                      className={styles.filterSelect}
+                      value={materialFolderFilter}
+                      onChange={(e) => setMaterialFolderFilter(e.target.value)}
+                    >
+                      <option value="all">All Folders</option>
+                      <option value="unassigned">No Folder</option>
+                      {visibleFolders.map((folder) => (
+                        <option key={folder.id} value={folder.id}>{folder.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className={styles.folderControls}>
+                    <h3>Material Folders</h3>
+                    <div className={styles.folderControlRow}>
+                      <input
+                        className={styles.searchInput}
+                        placeholder="New folder name..."
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                      />
+                      <select
+                        className={styles.filterSelect}
+                        value={newFolderCampaignId}
+                        onChange={(e) => setNewFolderCampaignId(e.target.value)}
+                      >
+                        <option value="">All campaigns / shared</option>
+                        {campaigns.map((campaign) => (
+                          <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
+                        ))}
+                      </select>
+                      <button type="button" className={styles.primaryBtn} onClick={handleCreateFolder}>Create Folder</button>
+                    </div>
+                    <div className={styles.folderPills}>
+                      {folders.slice(0, 8).map((folder) => (
+                        <span key={folder.id} className={styles.badge}>{folder.name}</span>
+                      ))}
+                      {folders.length === 0 && <span className={styles.rowMeta}>No folders yet.</span>}
+                    </div>
                   </div>
 
                   <div className={styles.materialTabs}>
@@ -682,22 +789,23 @@ export default function CampaignManagement() {
                       return (
                         <div className={styles.materialCard} key={material.id}>
                           <div className={styles.materialIcon}><Icon size={32} /></div>
+                          <button
+                            type="button"
+                            className={`${styles.flagIconBtn} ${styles.cardFlagTopRight} ${isFlagged ? styles.flagIconBtnActive : ''}`}
+                            onClick={() => handleFlagMaterial(material)}
+                            title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                            aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                          >
+                            <FlagIcon size={16} active={isFlagged} />
+                          </button>
                           <h4>{material.name || 'Untitled'}</h4>
                           <p>{(material.file_type || 'file').toUpperCase()} • {material.status || 'Submitted'}</p>
                           <p className={styles.rowMeta}>Campaign: {material.campaign?.name || 'Unassigned'}</p>
+                          <p className={styles.rowMeta}>Folder: {material.folder?.name || 'No folder'}</p>
                           <p className={styles.rowMeta}>Updated {material.updated_at ? new Date(material.updated_at).toLocaleString('en-GB') : 'N/A'}</p>
                           <p className={styles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
                           <div className={styles.materialCardActions}>
                             <button type="button" className={styles.linkBtn} onClick={() => setSelectedMaterial(material)}>Details</button>
-                            <button
-                              type="button"
-                              className={`${styles.flagIconBtn} ${isFlagged ? styles.flagIconBtnActive : ''}`}
-                              onClick={() => handleFlagMaterial(material)}
-                              title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                              aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                            >
-                              <FlagIcon size={16} active={isFlagged} />
-                            </button>
                             <button
                               type="button"
                               className={styles.linkBtn}
@@ -1004,20 +1112,21 @@ export default function CampaignManagement() {
                 return (
                   <div key={material.id} className={styles.materialCard}>
                     <div className={styles.materialIcon}><Icon size={28} /></div>
+                    <button
+                      type="button"
+                      className={`${styles.flagIconBtn} ${styles.cardFlagTopRight} ${isFlagged ? styles.flagIconBtnActive : ''}`}
+                      onClick={() => handleFlagMaterial(material)}
+                      title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                      aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                    >
+                      <FlagIcon size={16} active={isFlagged} />
+                    </button>
                     <h4>{material.name || 'Untitled'}</h4>
                     <p>{(material.file_type || 'file').toUpperCase()} • {material.status || 'Submitted'}</p>
+                    <p className={styles.rowMeta}>Folder: {material.folder?.name || 'No folder'}</p>
                     <p className={styles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
                     <div className={styles.materialCardActions}>
                       <button type="button" className={styles.linkBtn} onClick={() => { setSelectedMaterial(material); setSelectedCampaign(null) }}>Details</button>
-                      <button
-                        type="button"
-                        className={`${styles.flagIconBtn} ${isFlagged ? styles.flagIconBtnActive : ''}`}
-                        onClick={() => handleFlagMaterial(material)}
-                        title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                        aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                      >
-                        <FlagIcon size={16} active={isFlagged} />
-                      </button>
                     </div>
                   </div>
                 )
@@ -1025,6 +1134,28 @@ export default function CampaignManagement() {
               {materials.filter((m) => m.campaign?.name === selectedCampaign.name).length === 0 && (
                 <p className={styles.rowMeta}>No materials assigned to this campaign yet.</p>
               )}
+            </div>
+            <div className={styles.assignmentBox}>
+              <h4 style={{ margin: 0 }}>Assign Existing Material</h4>
+              <div className={styles.assignmentRow}>
+                <select className={styles.filterSelect} value={assignMaterialId} onChange={(e) => setAssignMaterialId(e.target.value)}>
+                  <option value="">Select material</option>
+                  {materials
+                    .filter((m) => m.campaign?.id !== selectedCampaign.id)
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>{m.name || m.id}</option>
+                    ))}
+                </select>
+                <select className={styles.filterSelect} value={assignFolderId} onChange={(e) => setAssignFolderId(e.target.value)}>
+                  <option value="">No folder</option>
+                  {folders
+                    .filter((folder) => !folder.campaign_id || folder.campaign_id === selectedCampaign.id)
+                    .map((folder) => (
+                      <option key={folder.id} value={folder.id}>{folder.name}</option>
+                    ))}
+                </select>
+                <button type="button" className={styles.primaryBtn} onClick={() => handleAssignMaterialToCampaign(selectedCampaign.id)}>Assign</button>
+              </div>
             </div>
             <div className={styles.modalFooter}>
               <button type="button" className={styles.primaryBtn} onClick={() => {
@@ -1050,6 +1181,7 @@ export default function CampaignManagement() {
             <p className={styles.rowMeta}>ID: {selectedMaterial.id}</p>
             <p className={styles.rowMeta}>Status: <strong>{selectedMaterial.status || 'Unknown'}</strong></p>
             <p className={styles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
+            <p className={styles.rowMeta}>Folder: {selectedMaterial.folder?.name || 'No folder'}</p>
             <p className={styles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
             <div className={styles.materialCardActions}>
               <button
@@ -1107,6 +1239,17 @@ export default function CampaignManagement() {
                   {campaigns.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
+                </select>
+              </div>
+              <div className={`${styles.formField} ${styles.formFieldFull}`}>
+                <label className={styles.formLabel}>Assign to Folder</label>
+                <select className={styles.formInput} value={uploadForm.folderId} onChange={(e) => setUploadForm((p) => ({ ...p, folderId: e.target.value }))}>
+                  <option value="">No folder</option>
+                  {folders
+                    .filter((folder) => !uploadForm.campaignId || !folder.campaign_id || folder.campaign_id === uploadForm.campaignId)
+                    .map((folder) => (
+                      <option key={folder.id} value={folder.id}>{folder.name}</option>
+                    ))}
                 </select>
               </div>
             </div>

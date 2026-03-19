@@ -1147,6 +1147,15 @@ export default function MarketingSales() {
                     return (
                       <div className={campaignStyles.materialCard} key={material.id}>
                         <div className={campaignStyles.materialIcon}><Icon size={32} /></div>
+                        <button
+                          type="button"
+                          className={`${campaignStyles.flagIconBtn} ${campaignStyles.cardFlagTopRight} ${isFlagged ? campaignStyles.flagIconBtnActive : ''}`}
+                          onClick={() => handleFlagMaterial(material)}
+                          title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                          aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                        >
+                          <FlagIcon size={16} active={isFlagged} />
+                        </button>
                         <h4>{material.name || 'Untitled'}</h4>
                         <p>{(material.file_type || 'file').toUpperCase()} • {material.status || 'Submitted'}</p>
                         <p className={campaignStyles.rowMeta}>{material.campaign?.name ? `Campaign: ${material.campaign.name}` : 'Unassigned'}</p>
@@ -1159,15 +1168,6 @@ export default function MarketingSales() {
                             onClick={() => setSelectedMaterial(material)}
                           >
                             Details
-                          </button>
-                          <button
-                            type="button"
-                            className={`${campaignStyles.flagIconBtn} ${isFlagged ? campaignStyles.flagIconBtnActive : ''}`}
-                            onClick={() => handleFlagMaterial(material)}
-                            title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                            aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                          >
-                            <FlagIcon size={16} active={isFlagged} />
                           </button>
                           <button
                             type="button"
