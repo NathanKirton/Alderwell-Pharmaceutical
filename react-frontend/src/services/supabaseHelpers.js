@@ -5,9 +5,60 @@
 // These helper functions provide consistent patterns for database operations
 // ============================================================================
 
+import { normalizeRole } from '../utils/roleUtils'
 import { supabase } from './supabaseClient'
 
 const MATERIALS_BUCKET = process.env.REACT_APP_SUPABASE_MATERIALS_BUCKET || 'materials'
+const CAMPAIGN_ASSIGNABLE_ROLES = new Set(['marketing_sales', 'liaison_officer'])
+
+const writeAuditLog = async (action, resourceType, resourceId, details = {}, explicitUserId = null) => {
+  try {
+    let userId = explicitUserId
+    if (!userId) {
+      const { data: { user } } = await supabase.auth.getUser()
+      userId = user?.id || null
+    }
+
+    const payload = {
+      action,
+      resource_type: resourceType,
+      resource_id: resourceId ? String(resourceId) : null,
+      details,
+      timestamp: new Date().toISOString(),
+    }
+
+    if (userId) {
+      payload.user_id = userId
+    }
+
+    const { error } = await supabase
+      .from('activity_logs')
+      .insert(payload)
+
+    if (error) {
+      console.error('Activity log error:', error)
+    }
+  } catch (error) {
+    console.error('Activity log error:', error)
+  }
+}
+
+const getCurrentUserRole = async (userId) => {
+  if (!userId) return 'no_role'
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single()
+
+  if (error) {
+    console.error('Current user role lookup error:', error)
+    return 'no_role'
+  }
+
+  return normalizeRole(data?.role)
+}
 
 const inferStorageObjectFromPublicUrl = (fileUrl) => {
   try {
@@ -36,6 +87,47 @@ const inferStorageObjectFromPublicUrl = (fileUrl) => {
   } catch (error) {
     return null
   }
+}
+
+const withResolvedMaterialProfiles = async (rows = []) => {
+  const profileIds = [...new Set(
+    rows
+      .flatMap((row) => [row.uploaded_by, row.reviewed_by])
+      .filter(Boolean)
+  )]
+
+  if (profileIds.length === 0) {
+    return rows
+  }
+
+  const { data: profilesData, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .in('id', profileIds)
+
+  if (profilesError) {
+    console.error('Profile resolution error:', profilesError)
+    return rows
+  }
+
+  const profileById = new Map((profilesData || []).map((profile) => [profile.id, profile]))
+
+  return rows.map((row) => {
+    const uploaderProfile = profileById.get(row.uploaded_by)
+    const reviewerProfile = profileById.get(row.reviewed_by)
+
+    const uploader = row.uploader || uploaderProfile
+    const reviewer = row.reviewer || reviewerProfile
+
+    const uploaderFallback = row.uploaded_by ? { full_name: `User ${String(row.uploaded_by).slice(0, 8)}` } : null
+    const reviewerFallback = row.reviewed_by ? { full_name: `User ${String(row.reviewed_by).slice(0, 8)}` } : null
+
+    return {
+      ...row,
+      uploader: uploader || uploaderFallback,
+      reviewer: reviewer || reviewerFallback,
+    }
+  })
 }
 
 // ============================================================================
@@ -145,11 +237,19 @@ export const campaignQueries = {
       return { data: null, error: error.message || 'Failed to create campaign.' }
     }
 
+    await writeAuditLog('campaign_created', 'campaigns', data?.[0]?.id, {
+      name: data?.[0]?.name || campaignData?.name,
+      status: data?.[0]?.status || campaignData?.status,
+      category: data?.[0]?.category || campaignData?.category || null,
+    }, user.id)
+
     return { data: data?.[0] || null, error: null }
   },
 
   // Update full campaign record
   updateCampaign: async (campaignId, updates) => {
+    const { data: { user } } = await supabase.auth.getUser()
+
     const { data, error } = await supabase
       .from('campaigns')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -158,8 +258,21 @@ export const campaignQueries = {
 
     if (error) {
       console.error('Campaign update error:', error)
+      if ((error.message || '').toLowerCase().includes('row-level security') && (error.message || '').toLowerCase().includes('campaigns')) {
+        return {
+          data: null,
+          error: 'Campaign update blocked by RLS. Run fix-campaign-update-rls.sql in Supabase SQL Editor, then retry.',
+        }
+      }
       return { data: null, error: error.message || 'Failed to update campaign.' }
     }
+
+    await writeAuditLog('campaign_updated', 'campaigns', campaignId, {
+      status: updates?.status || null,
+      category: updates?.category || null,
+      start_date: updates?.start_date || null,
+      end_date: updates?.end_date || null,
+    }, user?.id || null)
 
     return { data: data?.[0] || null, error: null }
   },
@@ -201,16 +314,17 @@ export const materialQueries = {
   getAllMaterials: async () => {
     const enhancedQuery = await supabase
       .from('materials')
-      .select('id, name, description, file_type, file_url, status, created_at, submission_date, updated_at, reviewed_at, campaign_id, folder_id, campaign:campaigns(id, name), folder:material_folders(id, name, campaign_id), uploader:profiles!materials_uploaded_by_fkey(full_name, email), reviewer:profiles!materials_reviewed_by_fkey(full_name, email)')
+      .select('id, name, description, file_type, file_url, status, created_at, submission_date, updated_at, reviewed_at, campaign_id, folder_id, uploaded_by, reviewed_by, campaign:campaigns(id, name), folder:material_folders(id, name, campaign_id), uploader:profiles!materials_uploaded_by_fkey(full_name, email), reviewer:profiles!materials_reviewed_by_fkey(full_name, email)')
       .order('created_at', { ascending: false })
 
     if (!enhancedQuery.error) {
-      return { data: enhancedQuery.data || [], error: null }
+      const normalized = await withResolvedMaterialProfiles(enhancedQuery.data || [])
+      return { data: normalized, error: null }
     }
 
     const fallbackQuery = await supabase
       .from('materials')
-      .select('id, name, description, file_type, file_url, status, created_at, submission_date, updated_at, reviewed_at, campaign_id, campaign:campaigns(id, name), uploader:profiles!materials_uploaded_by_fkey(full_name, email), reviewer:profiles!materials_reviewed_by_fkey(full_name, email)')
+      .select('id, name, description, file_type, file_url, status, created_at, submission_date, updated_at, reviewed_at, campaign_id, uploaded_by, reviewed_by, campaign:campaigns(id, name), uploader:profiles!materials_uploaded_by_fkey(full_name, email), reviewer:profiles!materials_reviewed_by_fkey(full_name, email)')
       .order('created_at', { ascending: false })
 
     if (fallbackQuery.error) {
@@ -218,7 +332,8 @@ export const materialQueries = {
       return { data: [], error: fallbackQuery.error.message || 'Failed to load materials.' }
     }
 
-    return { data: fallbackQuery.data || [], error: null }
+    const normalized = await withResolvedMaterialProfiles(fallbackQuery.data || [])
+    return { data: normalized, error: null }
   },
 
   // Get all materials for a campaign
@@ -244,6 +359,29 @@ export const materialQueries = {
     if (error) {
       console.error('Pending approvals error:', error)
       return { data: [], error: error.message || 'Failed to load pending approvals.' }
+    }
+
+    return { data: data || [], error: null }
+  },
+
+  // Get approvals completed by the current user
+  getMyPastApprovals: async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { data: [], error: 'Not authenticated.' }
+    }
+
+    const { data, error } = await supabase
+      .from('materials')
+      .select('id, name, status, review_notes, reviewed_at, updated_at, created_at, campaign:campaigns(name)')
+      .eq('reviewed_by', user.id)
+      .in('status', ['Approved', 'Rejected'])
+      .order('reviewed_at', { ascending: false })
+
+    if (error) {
+      console.error('Past approvals fetch error:', error)
+      return { data: [], error: error.message || 'Failed to load your past approvals.' }
     }
 
     return { data: data || [], error: null }
@@ -284,6 +422,11 @@ export const materialQueries = {
       }
       return { data: null, error: error.message || 'Failed to review material.' }
     }
+
+    await writeAuditLog('material_reviewed', 'materials', materialId, {
+      status,
+      review_notes: notes || null,
+    }, user.id)
 
     return { data: data?.[0] || null, error: null }
   },
@@ -338,7 +481,41 @@ export const materialQueries = {
       return { data: null, error: error.message || 'Material record creation failed.' }
     }
 
+    await writeAuditLog('material_submitted', 'materials', data?.[0]?.id, {
+      name: materialData?.name || null,
+      campaign_id: campaignId || null,
+      folder_id: materialData?.folder_id || null,
+      file_type: fileExt,
+    }, user.id)
+
     return { data, error: null }
+  },
+
+  // Get historical versions for a material
+  getMaterialVersions: async (materialId) => {
+    if (!materialId) {
+      return { data: [], error: 'Material id is required.' }
+    }
+
+    const { data, error } = await supabase
+      .from('material_versions')
+      .select('id, material_id, version_number, file_url, file_type, uploaded_by, change_reason, created_at, uploader:profiles!material_versions_uploaded_by_fkey(full_name, email)')
+      .eq('material_id', materialId)
+      .order('version_number', { ascending: false })
+
+    if (error) {
+      console.error('Material versions fetch error:', error)
+      const message = error.message || 'Failed to load material versions.'
+      if (message.toLowerCase().includes('material_versions')) {
+        return {
+          data: [],
+          error: 'material_versions table is missing. Run the new SQL patch for material version history, then retry.',
+        }
+      }
+      return { data: [], error: message }
+    }
+
+    return { data: data || [], error: null }
   },
 
   // Get a one-time download URL for approved materials only
@@ -383,8 +560,45 @@ export const materialQueries = {
     return { data: { url: data.signedUrl }, error: null }
   },
 
-  // Replace an existing material file and stamp updater + update time
-  replaceMaterialFile: async (materialId, file) => {
+  // Get a one-time download URL for a historical material version
+  getMaterialVersionDownloadUrl: async (version) => {
+    if (!version) {
+      return { data: null, error: 'No material version provided.' }
+    }
+
+    if (!version.file_url) {
+      return { data: null, error: 'This material version does not have a file URL.' }
+    }
+
+    const inferred = inferStorageObjectFromPublicUrl(version.file_url)
+    const bucket = inferred?.bucket || MATERIALS_BUCKET
+    const objectPath = inferred?.objectPath || decodeURIComponent(version.file_url.split('/').pop() || '')
+
+    if (!objectPath) {
+      return { data: null, error: 'Unable to infer storage object path for this version file.' }
+    }
+
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(objectPath, 120)
+
+    if (error) {
+      console.error('Material version download URL error:', error)
+      const message = error.message || 'Failed to generate version download URL.'
+      if (message.toLowerCase().includes('bucket not found')) {
+        return {
+          data: null,
+          error: `Storage bucket "${bucket}" was not found. Create it in Supabase or update REACT_APP_SUPABASE_MATERIALS_BUCKET.`,
+        }
+      }
+      return { data: null, error: message }
+    }
+
+    return { data: { url: data.signedUrl }, error: null }
+  },
+
+  // Replace an existing material file, capture version history, and stamp updater + update time
+  replaceMaterialFile: async (materialId, file, changeReason = 'File replaced') => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return { data: null, error: 'Not authenticated.' }
@@ -396,6 +610,17 @@ export const materialQueries = {
 
     if (!file) {
       return { data: null, error: 'No file selected.' }
+    }
+
+    const { data: existingMaterial, error: existingMaterialError } = await supabase
+      .from('materials')
+      .select('id, name, file_url, file_type, uploaded_by')
+      .eq('id', materialId)
+      .single()
+
+    if (existingMaterialError) {
+      console.error('Material lookup error:', existingMaterialError)
+      return { data: null, error: existingMaterialError.message || 'Unable to find existing material record.' }
     }
 
     const fileExt = file.name.split('.').pop()
@@ -420,6 +645,52 @@ export const materialQueries = {
       .from(MATERIALS_BUCKET)
       .getPublicUrl(fileName)
 
+    const { data: latestVersionRow, error: latestVersionError } = await supabase
+      .from('material_versions')
+      .select('version_number')
+      .eq('material_id', materialId)
+      .order('version_number', { ascending: false })
+      .limit(1)
+
+    if (latestVersionError) {
+      const message = latestVersionError.message || 'Failed to read material version history.'
+      if (message.toLowerCase().includes('material_versions')) {
+        return {
+          data: null,
+          error: 'material_versions table is missing. Run the SQL patch for version control before replacing files.',
+        }
+      }
+      return { data: null, error: message }
+    }
+
+    const previousVersion = Array.isArray(latestVersionRow) && latestVersionRow.length > 0
+      ? latestVersionRow[0].version_number
+      : 0
+
+    const { error: versionInsertError } = await supabase
+      .from('material_versions')
+      .insert({
+        material_id: materialId,
+        version_number: previousVersion + 1,
+        file_url: existingMaterial.file_url,
+        file_type: existingMaterial.file_type,
+        uploaded_by: user.id,
+        change_reason: changeReason,
+        created_at: new Date().toISOString(),
+      })
+
+    if (versionInsertError) {
+      console.error('Material version insert error:', versionInsertError)
+      const message = versionInsertError.message || 'Failed to save material version snapshot.'
+      if (message.toLowerCase().includes('row-level security')) {
+        return {
+          data: null,
+          error: 'File replace failed because material_versions RLS blocked the version snapshot insert. Run fix-material-file-replacement-rls.sql in Supabase SQL Editor, then retry.',
+        }
+      }
+      return { data: null, error: message }
+    }
+
     const updatePayload = {
       file_url: urlData.publicUrl,
       file_type: fileExt,
@@ -440,8 +711,24 @@ export const materialQueries = {
 
     if (error) {
       console.error('Material replacement update error:', error)
-      return { data: null, error: error.message || 'Failed to update material after upload.' }
+      const message = error.message || 'Failed to update material after upload.'
+      if (message.toLowerCase().includes('row-level security')) {
+        return {
+          data: null,
+          error: 'File replace failed because materials RLS blocked the update. Run fix-material-file-replacement-rls.sql in Supabase SQL Editor, then retry.',
+        }
+      }
+      return { data: null, error: message }
     }
+
+    await writeAuditLog('material_file_replaced', 'materials', materialId, {
+      previous_file_url: existingMaterial.file_url,
+      new_file_url: urlData.publicUrl,
+      previous_file_type: existingMaterial.file_type,
+      new_file_type: fileExt,
+      version_number: previousVersion + 1,
+      change_reason: changeReason,
+    }, user.id)
 
     return { data: data?.[0] || null, error: null }
   }
@@ -515,6 +802,29 @@ export const hcpQueries = {
     return { data: data?.[0] || null, error: null }
   },
 
+  // Update HCP contact
+  updateHCP: async (hcpId, updates) => {
+    if (!hcpId) {
+      return { data: null, error: 'HCP id is required.' }
+    }
+
+    const { data, error } = await supabase
+      .from('hcp_contacts')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', hcpId)
+      .select()
+
+    if (error) {
+      console.error('HCP update error:', error)
+      return { data: null, error: error.message || 'Failed to update HCP.' }
+    }
+
+    return { data: data?.[0] || null, error: null }
+  },
+
   // Log interaction
   logInteraction: async (hcpId, interactionData) => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -526,9 +836,15 @@ export const hcpQueries = {
     const { data, error } = await supabase
       .from('interactions')
       .insert({
-        ...interactionData,
         hcp_id: hcpId,
         initiated_by: user.id,
+        interaction_type: interactionData?.interaction_type || 'Other',
+        campaign_id: interactionData?.campaign_id || null,
+        notes: interactionData?.notes || null,
+        product_mentioned: interactionData?.product_mentioned || null,
+        outcome: interactionData?.outcome || null,
+        follow_up_required: Boolean(interactionData?.follow_up_required),
+        follow_up_date: interactionData?.follow_up_date || null,
         interaction_date: new Date().toISOString()
       })
       .select()
@@ -590,6 +906,10 @@ export const visitQueries = {
   logVisit: async (visitData) => {
     const { data: { user } } = await supabase.auth.getUser()
 
+    if (!user) {
+      return null
+    }
+
     const { data, error } = await supabase
       .from('visits')
       .insert({
@@ -598,8 +918,29 @@ export const visitQueries = {
       })
       .select()
 
-    if (error) console.error('Visit log error:', error)
+    if (error) {
+      console.error('Visit log error:', error)
+      return null
+    }
+
+    await writeAuditLog('visit_logged', 'visits', data?.[0]?.id, {
+      visit_date: visitData?.visit_date || null,
+      visit_type: visitData?.visit_type || null,
+      outcome: visitData?.outcome || null,
+    }, user.id)
+
     return data
+  },
+
+  // Get all visits (admin)
+  getAllVisits: async () => {
+    const { data, error } = await supabase
+      .from('visits')
+      .select('*, hcp:hcp_contacts(name, organisation), officer:profiles!visits_liaison_officer_id_fkey(full_name, email, avatar_url)')
+      .order('visit_date', { ascending: false })
+
+    if (error) console.error('All visits fetch error:', error)
+    return data || []
   },
 
   // Update visit outcome
@@ -632,7 +973,7 @@ export const taskQueries = {
 
     const { data, error } = await supabase
       .from('tasks')
-      .select('*')
+      .select('*, assignee:profiles!tasks_assigned_to_fkey(full_name, email, avatar_url), creator:profiles!tasks_created_by_fkey(full_name, email, avatar_url)')
       .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`)
       .neq('status', 'Cancelled')
       .order('due_date', { ascending: true })
@@ -645,12 +986,35 @@ export const taskQueries = {
     return { data: data || [], error: null }
   },
 
+  // Get tasks created/assigned by me (for Campaign Manager tracker)
+  getTasksAssignedByMe: async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { data: [], error: 'Not authenticated.' }
+    }
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*, assignee:profiles!tasks_assigned_to_fkey(full_name, email, avatar_url)')
+      .eq('created_by', user.id)
+      .neq('status', 'Cancelled')
+      .order('due_date', { ascending: true })
+
+    if (error) {
+      console.error('Tasks assigned by me fetch error:', error)
+      return { data: [], error: error.message || 'Failed to load tasks.' }
+    }
+
+    return { data: data || [], error: null }
+  },
+
   // Get my tasks
   getMyTasks: async (userId) => {
     const { data, error } = await supabase
       .from('tasks')
-      .select('*, assigned_by:created_by(full_name), campaign:campaigns(name)')
+      .select('*, assigned_by:created_by(full_name, email, avatar_url), campaign:campaigns(name)')
       .eq('assigned_to', userId)
+      .neq('status', 'Cancelled')
       .order('due_date', { ascending: true })
 
     if (error) console.error('Tasks fetch error:', error)
@@ -661,11 +1025,38 @@ export const taskQueries = {
   getAllTasks: async () => {
     const { data, error } = await supabase
       .from('tasks')
-      .select('*, assigned_to:profiles!tasks_assigned_to_fkey(full_name), created_by:profiles!tasks_created_by_fkey(full_name)')
+      .select('*, assigned_to:profiles!tasks_assigned_to_fkey(full_name, email, avatar_url), created_by:profiles!tasks_created_by_fkey(full_name, email, avatar_url)')
+      .neq('status', 'Cancelled')
       .order('due_date', { ascending: true })
 
     if (error) console.error('Tasks fetch error:', error)
     return data
+  },
+
+  // Get users who can receive campaign tasks
+  getAssignableUsers: async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { data: [], error: 'Not authenticated.' }
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role, avatar_url')
+      .order('full_name', { ascending: true })
+
+    if (error) {
+      console.error('Assignable users fetch error:', error)
+      return { data: [], error: error.message || 'Failed to load assignable users.' }
+    }
+
+    const normalizedProfiles = (data || []).map((profile) => ({
+      ...profile,
+      role: normalizeRole(profile.role),
+    }))
+
+    return { data: normalizedProfiles, error: null }
   },
 
   // Create task
@@ -676,10 +1067,35 @@ export const taskQueries = {
       return { data: null, error: 'Not authenticated.' }
     }
 
+    const creatorRole = await getCurrentUserRole(user.id)
+    const assignedTo = taskData.assigned_to || user.id
+
+    if ((creatorRole === 'campaign_management' || creatorRole === 'admin') && assignedTo !== user.id) {
+      const { data: assigneeProfile, error: assigneeError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', assignedTo)
+        .single()
+
+      if (assigneeError) {
+        console.error('Task assignee role lookup error:', assigneeError)
+        return { data: null, error: 'Unable to validate assignee role.' }
+      }
+
+      const assigneeRole = normalizeRole(assigneeProfile?.role)
+      if (!CAMPAIGN_ASSIGNABLE_ROLES.has(assigneeRole)) {
+        return {
+          data: null,
+          error: 'Campaign managers can assign tasks only to Sales & Marketing or Liaison Officers.',
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('tasks')
       .insert({
         ...taskData,
+        assigned_to: assignedTo,
         created_by: user.id,
         created_at: new Date().toISOString()
       })
@@ -690,11 +1106,21 @@ export const taskQueries = {
       return { data: null, error: error.message || 'Failed to create task.' }
     }
 
+    await writeAuditLog('task_created', 'tasks', data?.[0]?.id, {
+      title: taskData?.title || null,
+      assigned_to: taskData?.assigned_to || null,
+      related_campaign_id: taskData?.related_campaign_id || null,
+      due_date: taskData?.due_date || null,
+      priority: taskData?.priority || null,
+    }, user.id)
+
     return { data: data?.[0] || null, error: null }
   },
 
   // Update task status
   updateTaskStatus: async (taskId, status) => {
+    const { data: { user } } = await supabase.auth.getUser()
+
     const updateData = {
       status,
       updated_at: new Date().toISOString()
@@ -715,7 +1141,60 @@ export const taskQueries = {
       return { data: null, error: error.message || 'Failed to update task status.' }
     }
 
+    if (!data || data.length === 0) {
+      return { data: null, error: 'Task not found or you do not have permission to update it.' }
+    }
+
+    await writeAuditLog('task_status_updated', 'tasks', taskId, {
+      status,
+      completion_date: updateData.completion_date || null,
+    }, user?.id || null)
+
     return { data: data?.[0] || null, error: null }
+  },
+
+  deleteTask: async (taskId) => {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { data: null, error: 'Not authenticated.', mode: null }
+    }
+
+    const { error: deleteError } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId)
+
+    if (!deleteError) {
+      await writeAuditLog('task_deleted', 'tasks', taskId, { mode: 'hard_delete' }, user.id)
+      return { data: { id: taskId }, error: null, mode: 'hard_delete' }
+    }
+
+    const { data: cancelledTask, error: cancelError } = await supabase
+      .from('tasks')
+      .update({
+        status: 'Cancelled',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', taskId)
+      .select()
+      .maybeSingle()
+
+    if (cancelError) {
+      console.error('Task delete fallback error:', cancelError)
+      return {
+        data: null,
+        error: cancelError.message || deleteError.message || 'Failed to remove task.',
+        mode: null,
+      }
+    }
+
+    await writeAuditLog('task_deleted', 'tasks', taskId, {
+      mode: 'soft_delete',
+      original_error: deleteError.message || null,
+    }, user.id)
+
+    return { data: cancelledTask, error: null, mode: 'soft_delete' }
   }
 }
 
@@ -727,7 +1206,7 @@ export const auditQueries = {
   getActivityLogs: async (filters = {}) => {
     let query = supabase
       .from('activity_logs')
-      .select('*, user:user_id(full_name, email)')
+      .select('*, user:user_id(full_name, email, avatar_url)')
 
     if (filters.userId) {
       query = query.eq('user_id', filters.userId)
@@ -746,20 +1225,7 @@ export const auditQueries = {
 
   // Log custom activity
   logActivity: async (action, resourceType, resourceId, details = {}) => {
-    const { data: { user } } = await supabase.auth.getUser()
-
-    const { error } = await supabase
-      .from('activity_logs')
-      .insert({
-        user_id: user.id,
-        action,
-        resource_type: resourceType,
-        resource_id: resourceId,
-        details,
-        timestamp: new Date().toISOString()
-      })
-
-    if (error) console.error('Activity log error:', error)
+    await writeAuditLog(action, resourceType, resourceId, details)
   }
 }
 
@@ -815,12 +1281,22 @@ export const complianceQueries = {
       return { data: null, error: error.message || 'Failed to create compliance flag.' }
     }
 
+    await writeAuditLog('compliance_flag_created', 'compliance_flags', data?.[0]?.id, {
+      material_id: flagData?.material_id || null,
+      severity: flagData?.severity || null,
+      status: flagData?.status || null,
+    }, user.id)
+
     return { data: data?.[0] || null, error: null }
   },
 
   // Resolve flag
   resolveFlag: async (flagId, status, notes) => {
     const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { data: null, error: 'Not authenticated.' }
+    }
 
     const { data, error } = await supabase
       .from('compliance_flags')
@@ -833,8 +1309,21 @@ export const complianceQueries = {
       .eq('id', flagId)
       .select()
 
-    if (error) console.error('Flag update error:', error)
-    return data
+    if (error) {
+      console.error('Flag update error:', error)
+      return { data: null, error: error.message || 'Failed to update flag status.' }
+    }
+
+    if (!data?.length) {
+      return { data: null, error: 'Flag update did not apply. Check permissions or flag id.' }
+    }
+
+    await writeAuditLog('compliance_flag_updated', 'compliance_flags', flagId, {
+      status,
+      notes: notes || null,
+    }, user.id)
+
+    return { data: data[0], error: null }
   }
 }
 

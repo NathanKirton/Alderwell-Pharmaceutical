@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import DashboardTemplate from '../Layout/DashboardTemplate'
+import Avatar from '../Shared/Avatar'
+import FlagMaterialModal from '../Layout/FlagMaterialModal'
+import MaterialsLibrary from './Shared/MaterialsLibrary'
 import styles from './CampaignManagement.module.css'
-import { auditQueries, campaignQueries, complianceQueries, folderQueries, materialQueries } from '../../services/supabaseHelpers'
+import { auditQueries, campaignQueries, complianceQueries, folderQueries, materialQueries, taskQueries } from '../../services/supabaseHelpers'
+import { useAuth } from '../../contexts/AuthContext'
+import { normalizeRole } from '../../utils/roleUtils'
 import {
   BarChartIcon,
   CheckCircleIcon,
@@ -15,12 +20,56 @@ import {
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'campaign-management', label: 'Campaign Management' },
+  { id: 'task-assignment', label: 'Task Assignment' },
   { id: 'materials', label: 'Materials' },
   { id: 'approvals', label: 'Approvals' },
   { id: 'reporting-analytics', label: 'Reporting & Analytics' },
 ]
 
+const WORKSPACE_CAPABILITIES = [
+  'Plan and launch campaigns',
+  'Assign field execution tasks',
+  'Coordinate material readiness',
+  'Track approvals and outcomes',
+]
+
+const PAGE_INTENTS = {
+  dashboard: {
+    title: 'Campaign Operations Dashboard',
+    description: 'Monitor campaign health, pending approvals, and team momentum before deciding your next action.',
+  },
+  'campaign-management': {
+    title: 'Campaign Management',
+    description: 'Create, edit, and sequence campaigns so downstream teams always work from a clear plan.',
+  },
+  'task-assignment': {
+    title: 'Task Assignment',
+    description: 'Assign the right work to Sales & Marketing and Liaison teams with clear due dates and priorities.',
+  },
+  materials: {
+    title: 'Materials Coordination',
+    description: 'Organise campaign assets, folders, and replace outdated files with full visibility.',
+  },
+  approvals: {
+    title: 'Approval Queue',
+    description: 'Review pending items and route decisions quickly so campaigns do not stall.',
+  },
+  'reporting-analytics': {
+    title: 'Reporting & Analytics',
+    description: 'Understand campaign performance, blockers, and completion trends across activities.',
+  },
+}
+
+const WORKFLOW_ACTIONS = [
+  { tabId: 'dashboard', label: 'Overview' },
+  { tabId: 'campaign-management', label: 'Plan Campaigns' },
+  { tabId: 'task-assignment', label: 'Assign Work' },
+  { tabId: 'materials', label: 'Align Materials' },
+  { tabId: 'approvals', label: 'Clear Approvals' },
+]
+
 const CAMPAIGN_STATUSES = ['Planning', 'Active', 'On Hold', 'Archived']
+const TASK_ASSIGNMENT_ALLOWED_ROLES = new Set(['marketing_sales', 'liaison_officer'])
 
 const BLANK_CAMPAIGN_FORM = {
   name: '',
@@ -30,6 +79,15 @@ const BLANK_CAMPAIGN_FORM = {
   end_date: '',
   budget: '',
   category: '',
+}
+
+const BLANK_ASSIGNMENT_FORM = {
+  title: '',
+  description: '',
+  assigned_to: '',
+  related_campaign_id: '',
+  due_date: '',
+  priority: 'Medium',
 }
 
 const getFileIcon = (fileType) => {
@@ -49,21 +107,33 @@ const getMaterialEditorName = (material) => {
     'Unknown'
 }
 
+const toRoleLabel = (role) => String(role || '')
+  .split('_')
+  .filter(Boolean)
+  .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+  .join(' ')
+
 export default function CampaignManagement() {
+  const { userProfile, cachedRole } = useAuth()
+
   // ─── Data state ───────────────────────────────────────────────────────
   const [campaigns, setCampaigns] = useState([])
   const [materials, setMaterials] = useState([])
   const [folders, setFolders] = useState([])
   const [pendingApprovals, setPendingApprovals] = useState([])
   const [activityLogs, setActivityLogs] = useState([])
+  const [teamTasks, setTeamTasks] = useState([])
+  const [assignableUsers, setAssignableUsers] = useState([])
 
   // ─── Loading state ────────────────────────────────────────────────────
   const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [loadingMaterials, setLoadingMaterials] = useState(true)
   const [loadingApprovals, setLoadingApprovals] = useState(true)
+  const [loadingTasks, setLoadingTasks] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
   const [isReplacingMaterial, setIsReplacingMaterial] = useState(false)
   const [isSavingCampaign, setIsSavingCampaign] = useState(false)
+  const [isAssigningTask, setIsAssigningTask] = useState(false)
 
   // ─── UI state ─────────────────────────────────────────────────────────
   const [actionMessage, setActionMessage] = useState('')
@@ -74,11 +144,17 @@ export default function CampaignManagement() {
   const [materialFolderFilter, setMaterialFolderFilter] = useState('all')
   const [approvalFilter, setApprovalFilter] = useState('all')
   const [reportSearch, setReportSearch] = useState('')
+  const [taskAssigneeFilter, setTaskAssigneeFilter] = useState('All')
   const [newFolderName, setNewFolderName] = useState('')
   const [newFolderCampaignId, setNewFolderCampaignId] = useState('')
   const [assignMaterialId, setAssignMaterialId] = useState('')
   const [assignFolderId, setAssignFolderId] = useState('')
+  const [assignmentForm, setAssignmentForm] = useState(BLANK_ASSIGNMENT_FORM)
   const [flaggedMaterialIds, setFlaggedMaterialIds] = useState(new Set())
+  const [flaggingMaterial, setFlaggingMaterial] = useState(null)
+  const [materialVersions, setMaterialVersions] = useState([])
+  const [loadingMaterialVersions, setLoadingMaterialVersions] = useState(false)
+  const [downloadingVersionId, setDownloadingVersionId] = useState(null)
 
   // ─── Modals ───────────────────────────────────────────────────────────
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false)
@@ -91,6 +167,12 @@ export default function CampaignManagement() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [uploadForm, setUploadForm] = useState({ campaignId: '', folderId: '', name: '' })
   const [uploadFile, setUploadFile] = useState(null)
+  const [launchOverrideModal, setLaunchOverrideModal] = useState({
+    isOpen: false,
+    reason: '',
+    blockedReason: '',
+    payload: null,
+  })
 
   // ─── Refs ─────────────────────────────────────────────────────────────
   const replaceInputRef = useRef(null)
@@ -104,28 +186,43 @@ export default function CampaignManagement() {
     setLoadingCampaigns(true)
     setLoadingMaterials(true)
     setLoadingApprovals(true)
+    setLoadingTasks(true)
 
-    const [campaignsRes, materialsRes, approvalsRes, logs, foldersRes] = await Promise.all([
+    const [campaignsRes, materialsRes, approvalsRes, logs, foldersRes, flagsRes, tasksRes, usersRes] = await Promise.all([
       campaignQueries.getAllCampaigns(),
       materialQueries.getAllMaterials(),
       materialQueries.getPendingApprovals(),
       auditQueries.getActivityLogs(),
       folderQueries.getFolders(),
+      complianceQueries.getFlags(),
+      taskQueries.getTasksAssignedByMe(),
+      taskQueries.getAssignableUsers(),
     ])
 
     if (campaignsRes.error) setActionMessage(`Campaigns: ${campaignsRes.error}`)
     if (materialsRes.error) setActionMessage(`Materials: ${materialsRes.error}`)
     if (approvalsRes.error) setActionMessage(`Approvals: ${approvalsRes.error}`)
+    if (tasksRes.error) setActionMessage(`Tasks: ${tasksRes.error}`)
+    if (usersRes.error) setActionMessage(`Assignable users: ${usersRes.error}`)
 
     setCampaigns(campaignsRes.data || [])
     setMaterials(materialsRes.data || [])
     setPendingApprovals(approvalsRes.data || [])
     setActivityLogs(Array.isArray(logs) ? logs : [])
     setFolders(foldersRes.data || [])
+    setTeamTasks(tasksRes.data || [])
+    setAssignableUsers(usersRes.data || [])
+    setFlaggedMaterialIds(new Set(
+      (flagsRes || [])
+        .filter((row) => (row.status || '').toLowerCase() !== 'resolved')
+        .map((row) => row.material_id)
+        .filter(Boolean)
+    ))
 
     setLoadingCampaigns(false)
     setLoadingMaterials(false)
     setLoadingApprovals(false)
+    setLoadingTasks(false)
   }
 
   // ─── Computed values ──────────────────────────────────────────────────
@@ -227,6 +324,54 @@ export default function CampaignManagement() {
     )
   }, [campaigns, reportSearch])
 
+  const assignedTaskMetrics = useMemo(() => {
+    const open = teamTasks.filter((task) => (task.status || '').toLowerCase() !== 'completed').length
+    const completed = teamTasks.filter((task) => (task.status || '').toLowerCase() === 'completed').length
+    const overdue = teamTasks.filter((task) => {
+      if (!task.due_date) return false
+      if ((task.status || '').toLowerCase() === 'completed') return false
+      const due = new Date(task.due_date)
+      return !Number.isNaN(due.getTime()) && due < new Date()
+    }).length
+
+    return {
+      total: teamTasks.length,
+      open,
+      completed,
+      overdue,
+    }
+  }, [teamTasks])
+
+  const uniqueTaskAssignees = useMemo(() => {
+    const names = teamTasks
+      .map((task) => task.assignee?.full_name || task.assignee?.email)
+      .filter(Boolean)
+    return ['All', ...Array.from(new Set(names)).sort()]
+  }, [teamTasks])
+
+  const visibleAssignableTasks = useMemo(() => {
+    const filtered = taskAssigneeFilter === 'All'
+      ? teamTasks
+      : teamTasks.filter((task) => {
+          const name = task.assignee?.full_name || task.assignee?.email || ''
+          return name === taskAssigneeFilter
+        })
+    return [...filtered]
+      .sort((a, b) => {
+        const aDue = a.due_date ? new Date(a.due_date).getTime() : Number.MAX_SAFE_INTEGER
+        const bDue = b.due_date ? new Date(b.due_date).getTime() : Number.MAX_SAFE_INTEGER
+        return aDue - bDue
+      })
+  }, [teamTasks, taskAssigneeFilter])
+
+  const resolvedRole = normalizeRole(userProfile?.role || cachedRole || 'no_role')
+  const canOverrideCampaignLaunch = resolvedRole === 'campaign_management' || resolvedRole === 'admin'
+  const assignableUsersForCampaignTasks = useMemo(
+    () => assignableUsers.filter((user) => TASK_ASSIGNMENT_ALLOWED_ROLES.has(normalizeRole(user.role))),
+    [assignableUsers]
+  )
+  const assigneeHelperText = 'Assign tasks to Sales & Marketing or Liaison Officers only.'
+
   // ─── Material timeline builder ────────────────────────────────────────
   const buildMaterialTimeline = (material) => {
     if (!material) return []
@@ -265,6 +410,69 @@ export default function CampaignManagement() {
     setIsCampaignModalOpen(true)
   }
 
+  const openMaterialDetails = async (material) => {
+    setSelectedMaterial(material)
+    setLoadingMaterialVersions(true)
+
+    const { data, error } = await materialQueries.getMaterialVersions(material.id)
+    if (error) {
+      setActionMessage(`Version history unavailable: ${error}`)
+      setMaterialVersions([])
+      setLoadingMaterialVersions(false)
+      return
+    }
+
+    setMaterialVersions(data || [])
+    setLoadingMaterialVersions(false)
+  }
+
+  const handleDownloadMaterialVersion = async (version) => {
+    if (!version) return
+
+    setDownloadingVersionId(version.id)
+    const { data, error } = await materialQueries.getMaterialVersionDownloadUrl(version)
+    if (error) {
+      setActionMessage(error)
+      setDownloadingVersionId(null)
+      return
+    }
+
+    window.open(data.url, '_blank', 'noopener,noreferrer')
+    setDownloadingVersionId(null)
+  }
+
+  const saveCampaignRecord = async (payload, options = {}) => {
+    let result
+    if (isEditMode && editingCampaignId) {
+      result = await campaignQueries.updateCampaign(editingCampaignId, payload)
+    } else {
+      result = await campaignQueries.createCampaign(payload)
+    }
+
+    if (result.error) {
+      return { error: result.error }
+    }
+
+    if (options.override) {
+      const auditDetails = {
+        override_reason: options.overrideReason || 'No reason provided',
+        blocked_reason: options.blockedReason || null,
+        campaign_name: payload.name,
+        campaign_status: payload.status,
+        related_materials_checked: options.relatedMaterialCount ?? null,
+      }
+
+      await auditQueries.logActivity(
+        'campaign_launch_override',
+        'campaigns',
+        isEditMode ? editingCampaignId : (result.data?.id || null),
+        auditDetails
+      )
+    }
+
+    return { error: null }
+  }
+
   const handleSaveCampaign = async () => {
     if (!campaignForm.name.trim()) {
       setActionMessage('Campaign name is required.')
@@ -281,14 +489,52 @@ export default function CampaignManagement() {
       category: campaignForm.category.trim() || null,
     }
 
-    let error
-    if (isEditMode && editingCampaignId) {
-      const res = await campaignQueries.updateCampaign(editingCampaignId, payload)
-      error = res.error
-    } else {
-      const res = await campaignQueries.createCampaign(payload)
-      error = res.error
+    if (payload.status === 'Active') {
+      if (!isEditMode || !editingCampaignId) {
+        setActionMessage('Create campaigns as Planning first. Activate only after approved materials are attached.')
+        setIsSavingCampaign(false)
+        return
+      }
+
+      const relatedMaterials = materials.filter((material) => material.campaign?.id === editingCampaignId)
+      if (relatedMaterials.length === 0) {
+        const blockedReason = 'Activation blocked: add at least one approved material before launch.'
+        if (canOverrideCampaignLaunch) {
+          setLaunchOverrideModal({
+            isOpen: true,
+            reason: '',
+            blockedReason,
+            payload,
+          })
+          setIsSavingCampaign(false)
+          return
+        }
+        setActionMessage(blockedReason)
+        setIsSavingCampaign(false)
+        return
+      }
+
+      const unapprovedMaterials = relatedMaterials.filter((material) => (material.status || '').toLowerCase() !== 'approved')
+      if (unapprovedMaterials.length > 0) {
+        const sampleNames = unapprovedMaterials.slice(0, 3).map((material) => material.name || material.id).join(', ')
+        const blockedReason = `Activation blocked: ${unapprovedMaterials.length} material(s) are not approved (${sampleNames}).`
+        if (canOverrideCampaignLaunch) {
+          setLaunchOverrideModal({
+            isOpen: true,
+            reason: '',
+            blockedReason,
+            payload,
+          })
+          setIsSavingCampaign(false)
+          return
+        }
+        setActionMessage(blockedReason)
+        setIsSavingCampaign(false)
+        return
+      }
     }
+
+    const { error } = await saveCampaignRecord(payload)
 
     setIsSavingCampaign(false)
     if (error) {
@@ -297,6 +543,80 @@ export default function CampaignManagement() {
     }
     setActionMessage(isEditMode ? `Campaign "${payload.name}" updated.` : `Campaign "${payload.name}" created.`)
     setIsCampaignModalOpen(false)
+    await loadAll()
+  }
+
+  const handleConfirmLaunchOverride = async () => {
+    if (!launchOverrideModal.payload) {
+      setLaunchOverrideModal({ isOpen: false, reason: '', blockedReason: '', payload: null })
+      return
+    }
+
+    const reason = launchOverrideModal.reason.trim()
+    if (!reason) {
+      setActionMessage('Override reason is required to continue.')
+      return
+    }
+
+    setIsSavingCampaign(true)
+    const relatedMaterialCount = materials.filter((material) => material.campaign?.id === editingCampaignId).length
+    const { error } = await saveCampaignRecord(launchOverrideModal.payload, {
+      override: true,
+      overrideReason: reason,
+      blockedReason: launchOverrideModal.blockedReason,
+      relatedMaterialCount,
+    })
+    setIsSavingCampaign(false)
+
+    if (error) {
+      setActionMessage(`Failed to save campaign override: ${error}`)
+      return
+    }
+
+    setActionMessage('Campaign activated using override. Reason captured in audit logs.')
+    setLaunchOverrideModal({ isOpen: false, reason: '', blockedReason: '', payload: null })
+    setIsCampaignModalOpen(false)
+    await loadAll()
+  }
+
+  const handleAssignTask = async () => {
+    if (!assignmentForm.title.trim()) {
+      setActionMessage('Task title is required.')
+      return
+    }
+
+    if (!assignmentForm.assigned_to) {
+      setActionMessage('Select a team member to assign this task.')
+      return
+    }
+
+    const selectedAssignee = assignableUsersForCampaignTasks.find((user) => user.id === assignmentForm.assigned_to)
+    if (!selectedAssignee) {
+      setActionMessage('Tasks from Campaign Management can only be assigned to Sales & Marketing or Liaison Officers.')
+      return
+    }
+
+    setIsAssigningTask(true)
+
+    const { error } = await taskQueries.createTask({
+      title: assignmentForm.title.trim(),
+      description: assignmentForm.description.trim() || null,
+      assigned_to: assignmentForm.assigned_to,
+      related_campaign_id: assignmentForm.related_campaign_id || null,
+      due_date: assignmentForm.due_date || null,
+      priority: assignmentForm.priority,
+      status: 'Open',
+    })
+
+    if (error) {
+      setActionMessage(`Task assignment failed: ${error}`)
+      setIsAssigningTask(false)
+      return
+    }
+
+    setActionMessage('Task assigned successfully.')
+    setAssignmentForm(BLANK_ASSIGNMENT_FORM)
+    setIsAssigningTask(false)
     await loadAll()
   }
 
@@ -336,6 +656,11 @@ export default function CampaignManagement() {
       await loadAll()
     }
     setIsUploading(false)
+  }
+
+  const resetUploadForm = () => {
+    setUploadForm({ campaignId: '', folderId: '', name: '' })
+    setUploadFile(null)
   }
 
   const handleCreateFolder = async () => {
@@ -408,39 +733,36 @@ export default function CampaignManagement() {
       return
     }
 
-    const reasonInput = window.prompt('Why are you flagging this material for compliance review?', `Manual compliance flag for ${material.name || material.id}`)
-    if (reasonInput === null) {
-      return
+    setFlaggingMaterial(material)
+  }
+
+  const submitFlagForMaterial = async ({ reason, severity, details }) => {
+    if (!flaggingMaterial?.id) {
+      return { error: 'No material selected.' }
     }
 
-    const reason = reasonInput.trim()
-    if (!reason) {
-      setActionMessage('Flag cancelled: reason is required.')
-      return
-    }
-
-    const severityInput = (window.prompt('Flag severity (Low, Medium, High, Critical)', 'Medium') || 'Medium').trim()
-    const normalizedSeverity = severityInput.charAt(0).toUpperCase() + severityInput.slice(1).toLowerCase()
-    const severity = ['Low', 'Medium', 'High', 'Critical'].includes(normalizedSeverity) ? normalizedSeverity : 'Medium'
+    const normalizedSeverity = (severity || 'Medium').trim()
 
     const { error } = await complianceQueries.createFlag({
-      material_id: material.id,
-      reason,
-      severity,
+      material_id: flaggingMaterial.id,
+      reason: details ? `${reason}\n\nDetails: ${details}` : reason,
+      severity: ['Low', 'Medium', 'High', 'Critical'].includes(normalizedSeverity) ? normalizedSeverity : 'Medium',
       status: 'Open',
     })
 
     if (error) {
-      setActionMessage(`Failed to flag material: ${error}`)
-      return
+      return { error }
     }
 
     setFlaggedMaterialIds((prev) => {
       const next = new Set(prev)
-      next.add(material.id)
+      next.add(flaggingMaterial.id)
       return next
     })
-    setActionMessage(`Material ${material.name || material.id} flagged for compliance review.`)
+    setActionMessage(`Material ${flaggingMaterial.name || flaggingMaterial.id} flagged for compliance review.`)
+    setFlaggingMaterial(null)
+    await loadAll()
+    return { error: null }
   }
 
   // ─── Export campaigns CSV ─────────────────────────────────────────────
@@ -465,7 +787,15 @@ export default function CampaignManagement() {
 
   return (
     <>
-      <DashboardTemplate title="Campaign Management Portal" tabs={TABS}>
+      <DashboardTemplate
+        title="Campaign Management Portal"
+        tabs={TABS}
+        roleName="Campaign Management Workspace"
+        roleSummary="This workspace links planning, task assignment, materials, and approvals so teams can execute campaigns without handoff confusion."
+        roleCapabilities={WORKSPACE_CAPABILITIES}
+        pageIntents={PAGE_INTENTS}
+        globalActions={WORKFLOW_ACTIONS}
+      >
         {(activeTab) => {
           switch (activeTab) {
 
@@ -668,155 +998,266 @@ export default function CampaignManagement() {
                 </div>
               )
 
-            /* ──────────────────── MATERIALS ──────────────────── */
-            case 'materials':
+            /* ──────────────────── TASK ASSIGNMENT ──────────────────── */
+            case 'task-assignment':
               return (
                 <div className={styles.tabContent}>
                   {actionMessage && <p className={styles.rowMeta}>{actionMessage}</p>}
-                  <input ref={replaceInputRef} type="file" hidden onChange={handleReplaceFileSelected} />
+
                   <div className={styles.pageHeaderRow}>
                     <div>
-                      <h1>Materials Library</h1>
-                      <p>Manage and organise your campaign assets. {materials.length} total.</p>
+                      <h1>Task Assignment</h1>
+                      <p>Assign campaign work to Marketing, Compliance, and Liaison teams.</p>
                     </div>
-                    <button type="button" className={styles.primaryBtn} onClick={() => openUploadModal('')}>
-                      <PlusIcon size={16} /> Upload Material
-                    </button>
+                    <button type="button" className={styles.secondaryBtn} onClick={loadAll}>Refresh</button>
                   </div>
 
-                  <div className={styles.toolbar}>
-                    <input
-                      className={styles.searchInput}
-                      placeholder="Search materials by name, type or status..."
-                      value={materialSearch}
-                      onChange={(e) => setMaterialSearch(e.target.value)}
-                    />
-                    <select
-                      className={styles.filterSelect}
-                      value={materialCampaignFilter}
-                      onChange={(e) => setMaterialCampaignFilter(e.target.value)}
-                    >
-                      <option value="all">All Campaigns</option>
-                      <option value="unassigned">Unassigned</option>
-                      {campaignNames.map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                      ))}
-                    </select>
-                    <select
-                      className={styles.filterSelect}
-                      value={materialFolderFilter}
-                      onChange={(e) => setMaterialFolderFilter(e.target.value)}
-                    >
-                      <option value="all">All Folders</option>
-                      <option value="unassigned">No Folder</option>
-                      {visibleFolders.map((folder) => (
-                        <option key={folder.id} value={folder.id}>{folder.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className={styles.folderControls}>
-                    <h3>Material Folders</h3>
-                    <div className={styles.folderControlRow}>
-                      <input
-                        className={styles.searchInput}
-                        placeholder="New folder name..."
-                        value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
-                      />
-                      <select
-                        className={styles.filterSelect}
-                        value={newFolderCampaignId}
-                        onChange={(e) => setNewFolderCampaignId(e.target.value)}
-                      >
-                        <option value="">All campaigns / shared</option>
-                        {campaigns.map((campaign) => (
-                          <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
-                        ))}
-                      </select>
-                      <button type="button" className={styles.primaryBtn} onClick={handleCreateFolder}>Create Folder</button>
+                  <div className={styles.kpiGrid}>
+                    <div className={styles.kpiCard}>
+                      <p className={styles.kpiLabel}>Open Tasks</p>
+                      <div className={styles.kpiRow}><h3>{loadingTasks ? '—' : assignedTaskMetrics.open}</h3><span>in progress</span></div>
+                      <div className={styles.kpiTrack}><div className={styles.kpiFill} style={{ width: `${Math.min(100, assignedTaskMetrics.open * 10)}%` }}></div></div>
                     </div>
-                    <div className={styles.folderPills}>
-                      {folders.slice(0, 8).map((folder) => (
-                        <span key={folder.id} className={styles.badge}>{folder.name}</span>
-                      ))}
-                      {folders.length === 0 && <span className={styles.rowMeta}>No folders yet.</span>}
+                    <div className={styles.kpiCard}>
+                      <p className={styles.kpiLabel}>Completed Tasks</p>
+                      <div className={styles.kpiRow}><h3>{loadingTasks ? '—' : assignedTaskMetrics.completed}</h3><span>closed</span></div>
+                      <div className={styles.kpiTrack}><div className={styles.kpiFill} style={{ width: `${Math.min(100, assignedTaskMetrics.completed * 10)}%` }}></div></div>
+                    </div>
+                    <div className={styles.kpiCard}>
+                      <p className={styles.kpiLabel}>Overdue Tasks</p>
+                      <div className={styles.kpiRow}><h3>{loadingTasks ? '—' : assignedTaskMetrics.overdue}</h3><span>needs action</span></div>
+                      <div className={styles.kpiTrack}><div className={styles.kpiFill} style={{ width: `${Math.min(100, assignedTaskMetrics.overdue * 20)}%` }}></div></div>
                     </div>
                   </div>
 
-                  <div className={styles.materialTabs}>
-                    {[
-                      { id: 'all', label: 'All Assets' },
-                      { id: 'pdf', label: 'PDFs' },
-                      { id: 'video', label: 'Videos' },
-                      { id: 'image', label: 'Images' },
-                      { id: 'ppt', label: 'Presentations' },
-                      { id: 'other', label: 'Other' },
-                    ].map((tab) => (
+                  <div className={styles.tableCard}>
+                    <div className={styles.cardHeader}>
+                      <h3>Create Assignment</h3>
+                      <span className={styles.rowMeta}>{assigneeHelperText}</span>
+                    </div>
+                    <div className={styles.formGrid}>
+                      <div className={styles.formField}>
+                        <label className={styles.formLabel}>Task Title *</label>
+                        <input
+                          className={styles.formInput}
+                          value={assignmentForm.title}
+                          placeholder="e.g. Review HCP outreach deck"
+                          onChange={(e) => setAssignmentForm((prev) => ({ ...prev, title: e.target.value }))}
+                        />
+                      </div>
+                      <div className={styles.formField}>
+                        <label className={styles.formLabel}>Assignee *</label>
+                        <select
+                          className={styles.formInput}
+                          value={assignmentForm.assigned_to}
+                          onChange={(e) => setAssignmentForm((prev) => ({ ...prev, assigned_to: e.target.value }))}
+                        >
+                          <option value="">Select a user</option>
+                          {assignableUsersForCampaignTasks.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {(user.full_name || user.email || user.id)} - {toRoleLabel(user.role)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className={styles.formField}>
+                        <label className={styles.formLabel}>Campaign</label>
+                        <select
+                          className={styles.formInput}
+                          value={assignmentForm.related_campaign_id}
+                          onChange={(e) => setAssignmentForm((prev) => ({ ...prev, related_campaign_id: e.target.value }))}
+                        >
+                          <option value="">General / cross-campaign</option>
+                          {campaigns.map((campaign) => (
+                            <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className={styles.formField}>
+                        <label className={styles.formLabel}>Priority</label>
+                        <select
+                          className={styles.formInput}
+                          value={assignmentForm.priority}
+                          onChange={(e) => setAssignmentForm((prev) => ({ ...prev, priority: e.target.value }))}
+                        >
+                          <option value="Low">Low</option>
+                          <option value="Medium">Medium</option>
+                          <option value="High">High</option>
+                        </select>
+                      </div>
+                      <div className={styles.formField}>
+                        <label className={styles.formLabel}>Due Date</label>
+                        <input
+                          type="date"
+                          className={styles.formInput}
+                          value={assignmentForm.due_date}
+                          onChange={(e) => setAssignmentForm((prev) => ({ ...prev, due_date: e.target.value }))}
+                        />
+                      </div>
+                      <div className={`${styles.formField} ${styles.formFieldFull}`}>
+                        <label className={styles.formLabel}>Task Description</label>
+                        <textarea
+                          rows={3}
+                          className={styles.formInput}
+                          value={assignmentForm.description}
+                          placeholder="Include expected deliverables and compliance context."
+                          onChange={(e) => setAssignmentForm((prev) => ({ ...prev, description: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className={styles.modalFooter}>
                       <button
-                        key={tab.id}
                         type="button"
-                        className={`${styles.tabPill} ${materialTypeFilter === tab.id ? styles.activePill : ''}`}
-                        onClick={() => setMaterialTypeFilter(tab.id)}
+                        className={styles.secondaryBtn}
+                        onClick={() => setAssignmentForm(BLANK_ASSIGNMENT_FORM)}
                       >
-                        {tab.label}
+                        Clear
                       </button>
-                    ))}
+                      <button
+                        type="button"
+                        className={styles.primaryBtn}
+                        disabled={isAssigningTask}
+                        onClick={handleAssignTask}
+                      >
+                        {isAssigningTask ? 'Assigning...' : 'Assign Task'}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className={styles.materialsGrid}>
-                    {visibleMaterials.map((material) => {
-                      const Icon = getFileIcon(material.file_type)
-                      const isFlagged = flaggedMaterialIds.has(material.id)
-                      return (
-                        <div className={styles.materialCard} key={material.id}>
-                          <div className={styles.materialIcon}><Icon size={32} /></div>
-                          <button
-                            type="button"
-                            className={`${styles.flagIconBtn} ${styles.cardFlagTopRight} ${isFlagged ? styles.flagIconBtnActive : ''}`}
-                            onClick={() => handleFlagMaterial(material)}
-                            title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                            aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                  <div className={styles.tableCard}>
+                    <div className={styles.cardHeader}>
+                      <h3>Assigned Task Tracker</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.72rem', color: 'var(--text-muted, #888)', gap: '2px' }}>
+                          Filter by Assignee
+                          <select
+                            className={styles.formInput}
+                            style={{ minWidth: '180px' }}
+                            value={taskAssigneeFilter}
+                            onChange={(e) => setTaskAssigneeFilter(e.target.value)}
                           >
-                            <FlagIcon size={16} active={isFlagged} />
-                          </button>
-                          <h4>{material.name || 'Untitled'}</h4>
-                          <p>{(material.file_type || 'file').toUpperCase()} • {material.status || 'Submitted'}</p>
-                          <p className={styles.rowMeta}>Campaign: {material.campaign?.name || 'Unassigned'}</p>
-                          <p className={styles.rowMeta}>Folder: {material.folder?.name || 'No folder'}</p>
-                          <p className={styles.rowMeta}>Updated {material.updated_at ? new Date(material.updated_at).toLocaleString('en-GB') : 'N/A'}</p>
-                          <p className={styles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
-                          <div className={styles.materialCardActions}>
-                            <button type="button" className={styles.linkBtn} onClick={() => setSelectedMaterial(material)}>Details</button>
-                            <button
-                              type="button"
-                              className={styles.linkBtn}
-                              onClick={() => handleReplaceMaterialClick(material)}
-                              disabled={isReplacingMaterial}
-                            >
-                              {isReplacingMaterial && materialToReplace?.id === material.id ? 'Updating…' : 'Replace'}
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.linkBtn}
-                              disabled={(material.status || '').toLowerCase() !== 'approved'}
-                              title={(material.status || '').toLowerCase() !== 'approved' ? 'Only approved materials can be downloaded' : 'Download file'}
-                              onClick={async () => {
-                                const { data, error } = await materialQueries.getApprovedMaterialDownloadUrl(material)
-                                if (error) { setActionMessage(error); return }
-                                window.open(data.url, '_blank', 'noopener,noreferrer')
-                              }}
-                            >
-                              Download
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                    {!loadingMaterials && visibleMaterials.length === 0 && <p className={styles.rowMeta}>No materials found.</p>}
-                    {loadingMaterials && <p className={styles.rowMeta}>Loading materials...</p>}
+                            {uniqueTaskAssignees.map((name) => (
+                              <option key={name} value={name}>{name}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <span className={styles.rowMeta}>{visibleAssignableTasks.length} / {assignedTaskMetrics.total} task(s)</span>
+                      </div>
+                    </div>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Task</th>
+                          <th>Assigned To</th>
+                          <th>Status</th>
+                          <th>Priority</th>
+                          <th>Due Date</th>
+                          <th>Campaign Link</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleAssignableTasks.map((task) => (
+                          <tr key={task.id}>
+                            <td>
+                              <strong>{task.title || task.id}</strong>
+                              <p className={styles.rowMeta}>{task.description || 'No description'}</p>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Avatar
+                                  name={task.assignee?.full_name || task.assignee?.email || '?'}
+                                  src={task.assignee?.avatar_url || task.assignee?.profile_picture_url || null}
+                                  size="sm"
+                                />
+                                <span>{task.assignee?.full_name || task.assignee?.email || '—'}</span>
+                              </div>
+                            </td>
+                            <td><span className={styles.badge}>{task.status || 'Open'}</span></td>
+                            <td>{task.priority || 'Medium'}</td>
+                            <td>{task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB') : '—'}</td>
+                            <td>{campaigns.find((c) => c.id === task.related_campaign_id)?.name || 'General'}</td>
+                          </tr>
+                        ))}
+                        {!loadingTasks && visibleAssignableTasks.length === 0 && (
+                          <tr><td colSpan={6} className={styles.rowMeta}>No tasks assigned yet. Use the form above to assign your first task.</td></tr>
+                        )}
+                        {loadingTasks && (
+                          <tr><td colSpan={6} className={styles.rowMeta}>Loading tasks...</td></tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
+              )
+
+            /* ──────────────────── MATERIALS ──────────────────── */
+            case 'materials':
+              return (
+                <MaterialsLibrary
+                  tabClassName={styles.tabContent}
+                  actionMessage={actionMessage}
+                  actionMessageClassName={styles.rowMeta}
+                  replaceInputRef={replaceInputRef}
+                  onReplaceChange={handleReplaceFileSelected}
+                  uploadButtonLabel="Upload Material"
+                  isUploading={isUploading}
+                  materials={materials}
+                  visibleMaterials={visibleMaterials}
+                  loading={loadingMaterials}
+                  materialSearch={materialSearch}
+                  onMaterialSearchChange={setMaterialSearch}
+                  materialCampaignFilter={materialCampaignFilter}
+                  onMaterialCampaignFilterChange={setMaterialCampaignFilter}
+                  campaignNames={campaignNames}
+                  materialFolderFilter={materialFolderFilter}
+                  onMaterialFolderFilterChange={setMaterialFolderFilter}
+                  visibleFolders={visibleFolders}
+                  materialTypeFilter={materialTypeFilter}
+                  onMaterialTypeFilterChange={setMaterialTypeFilter}
+                  getFileIcon={getFileIcon}
+                  flaggedMaterialIds={flaggedMaterialIds}
+                  onFlagMaterial={handleFlagMaterial}
+                  getMaterialEditorName={getMaterialEditorName}
+                  onOpenDetails={openMaterialDetails}
+                  onReplaceMaterial={handleReplaceMaterialClick}
+                  isReplacingMaterial={isReplacingMaterial}
+                  replacingMaterialId={materialToReplace?.id || null}
+                  onDownloadMaterial={async (material) => {
+                    const { data, error } = await materialQueries.getApprovedMaterialDownloadUrl(material)
+                    if (error) {
+                      setActionMessage(error)
+                      return
+                    }
+                    window.open(data.url, '_blank', 'noopener,noreferrer')
+                  }}
+                  uploadManager={{
+                    enabled: true,
+                    form: uploadForm,
+                    fileName: uploadFile?.name || '',
+                    campaigns,
+                    folders,
+                    onNameChange: (value) => setUploadForm((prev) => ({ ...prev, name: value })),
+                    onCampaignChange: (value) => setUploadForm((prev) => ({
+                      ...prev,
+                      campaignId: value,
+                      folderId: prev.folderId && !folders.some((folder) => folder.id === prev.folderId && (!value || !folder.campaign_id || folder.campaign_id === value)) ? '' : prev.folderId,
+                    })),
+                    onFolderChange: (value) => setUploadForm((prev) => ({ ...prev, folderId: value })),
+                    onFileChange: handleUploadFileChange,
+                    onSubmit: handleSubmitUpload,
+                    onReset: resetUploadForm,
+                  }}
+                  folderManager={{
+                    enabled: true,
+                    newFolderName,
+                    onNewFolderNameChange: setNewFolderName,
+                    newFolderCampaignId,
+                    onNewFolderCampaignIdChange: setNewFolderCampaignId,
+                    campaigns,
+                    folders,
+                    onCreateFolder: handleCreateFolder,
+                  }}
+                />
               )
 
             /* ──────────────────── APPROVALS ──────────────────── */
@@ -1107,7 +1548,7 @@ export default function CampaignManagement() {
                     <p className={styles.rowMeta}>Folder: {material.folder?.name || 'No folder'}</p>
                     <p className={styles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
                     <div className={styles.materialCardActions}>
-                      <button type="button" className={styles.linkBtn} onClick={() => { setSelectedMaterial(material); setSelectedCampaign(null) }}>Details</button>
+                      <button type="button" className={styles.linkBtn} onClick={() => { openMaterialDetails(material); setSelectedCampaign(null) }}>Details</button>
                     </div>
                   </div>
                 )
@@ -1191,9 +1632,87 @@ export default function CampaignManagement() {
                 <p className={styles.rowMeta}>No timeline events available.</p>
               )}
             </div>
+            <h4 style={{ margin: '14px 0 6px' }}>Version History</h4>
+            <div className={styles.timelineList}>
+              {loadingMaterialVersions && <p className={styles.rowMeta}>Loading versions...</p>}
+              {!loadingMaterialVersions && materialVersions.map((version) => (
+                <div key={version.id} className={styles.timelineItem}>
+                  <span className={styles.timelineDot}></span>
+                  <div>
+                    <strong>Version {version.version_number}</strong>
+                    <p className={styles.rowMeta}>{version.file_type || 'file'} uploaded by {version.uploader?.full_name || version.uploader?.email || 'Unknown user'}</p>
+                    <p className={styles.rowMeta}>{version.created_at ? new Date(version.created_at).toLocaleString('en-GB') : 'No timestamp'}</p>
+                    {version.change_reason && <p className={styles.rowMeta}>Reason: {version.change_reason}</p>}
+                    <button
+                      type="button"
+                      className={styles.linkBtn}
+                      onClick={() => handleDownloadMaterialVersion(version)}
+                      disabled={downloadingVersionId === version.id}
+                    >
+                      {downloadingVersionId === version.id ? 'Preparing download...' : 'Download'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {!loadingMaterialVersions && materialVersions.length === 0 && (
+                <p className={styles.rowMeta}>No versions captured yet.</p>
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      {launchOverrideModal.isOpen && (
+        <div className={styles.modalBackdrop} onClick={() => setLaunchOverrideModal({ isOpen: false, reason: '', blockedReason: '', payload: null })}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.cardHeader}>
+              <h3>Launch Override Required</h3>
+              <button
+                type="button"
+                className={styles.pageBtn}
+                onClick={() => setLaunchOverrideModal({ isOpen: false, reason: '', blockedReason: '', payload: null })}
+              >
+                Close
+              </button>
+            </div>
+            <p className={styles.rowMeta}>{launchOverrideModal.blockedReason}</p>
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Override Reason *</label>
+              <textarea
+                rows={4}
+                className={styles.formInput}
+                value={launchOverrideModal.reason}
+                placeholder="Explain why launch should proceed despite incomplete approvals."
+                onChange={(e) => setLaunchOverrideModal((prev) => ({ ...prev, reason: e.target.value }))}
+              />
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                onClick={() => setLaunchOverrideModal({ isOpen: false, reason: '', blockedReason: '', payload: null })}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.primaryBtn}
+                onClick={handleConfirmLaunchOverride}
+                disabled={isSavingCampaign}
+              >
+                {isSavingCampaign ? 'Saving...' : 'Confirm Override and Launch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <FlagMaterialModal
+        isOpen={Boolean(flaggingMaterial)}
+        material={flaggingMaterial}
+        onClose={() => setFlaggingMaterial(null)}
+        onSubmit={submitFlagForMaterial}
+      />
 
       {/* ── Upload Material Modal ── */}
       {isUploadModalOpen && (

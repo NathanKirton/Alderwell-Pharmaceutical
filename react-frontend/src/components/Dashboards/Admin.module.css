@@ -36,6 +36,55 @@ h4 {
   color: #5f7068;
 }
 
+.adminGuide {
+  background: linear-gradient(150deg, #ffffff 0%, #f4f9f6 100%);
+  border: 1px solid #d9e6de;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.adminGuideRole {
+  margin: 0;
+  color: #486457;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.adminGuide h3 {
+  margin: 6px 0 4px;
+}
+
+.adminGuide p {
+  margin: 0;
+}
+
+.adminGuideActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.adminGuideActionBtn {
+  border: 1px solid #c7d8cf;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #224233;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.adminGuideActionBtn:disabled {
+  background: #e8f2ec;
+  color: #587266;
+  cursor: default;
+}
+
 .refreshButton {
   border: 1px solid #bfd1c8;
   border-radius: 10px;
@@ -336,6 +385,17 @@ h4 {
   text-decoration: underline;
 }
 
+.linkBtn:disabled,
+.smallBtn:disabled,
+.smallBtnDanger:disabled,
+.primaryBtn:disabled,
+.secondaryBtn:disabled,
+.refreshButton:disabled,
+.roleSelect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .status {
   margin-top: 12px;
   font-size: 0.9rem;
@@ -405,6 +465,8 @@ h4 {
 .detailsCell {
   color: #5f7068;
   font-size: 0.9rem;
+  word-break: break-word;
+  max-width: 420px;
 }
 
 @keyframes fadeIn {
@@ -452,5 +514,53 @@ h4 {
     width: 100%;
     min-width: unset;
   }
+}
+
+/* Shared helpers */
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onhold {
+  background: #fff5e6;
+  border-color: #efcf93;
+  color: #9a5f09;
+}
+
+.todo {
+  background: #f4f5f7;
+  color: #616b76;
+  border-color: #d0d6e0;
+}
+
+.inprogress {
+  background: #e8f0fc;
+  color: #1a4fa3;
+  border-color: #b6cdf7;
+}
+
+.done {
+  background: #ecf8ef;
+  border-color: #b6dfc0;
+  color: #1d6f38;
+}
+
+.cancelled {
+  background: #f4f5f7;
+  color: #8a8f99;
+  border-color: #d0d6e0;
+}
+
+.editRow {
+  padding: 0;
+  background: #f8fbf9;
+}
+
+.textArea {
+  min-height: 80px;
+  resize: vertical;
+  display: block;
 }
 

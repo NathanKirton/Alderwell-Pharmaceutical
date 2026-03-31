@@ -97,7 +97,7 @@
 }
 
 .primaryBtn {
-  background: #1f2f4a;
+  background: #1f5a3e;
   color: #fff;
   padding: 10px 14px;
   display: inline-flex;
@@ -106,7 +106,7 @@
 }
 
 .primaryBtn:hover {
-  background: #17253a;
+  background: #174d34;
 }
 
 .secondaryBtn,
@@ -178,7 +178,7 @@
 .kpiFill,
 .inlineFill {
   height: 100%;
-  background: linear-gradient(90deg, #4f637e, #7388a2);
+  background: linear-gradient(90deg, #1f5a3e, #3d8f68);
 }
 
 .dashboardGrid {

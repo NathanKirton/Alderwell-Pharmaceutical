@@ -1,8 +1,19 @@
-import { render, screen } from '@testing-library/react';
-import App from './App';
+import { render, screen } from '@testing-library/react'
+import App from './App'
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
-});
+jest.mock('./contexts/AuthContext', () => ({
+  AuthProvider: ({ children }) => children,
+  useAuth: () => ({
+    user: null,
+    userProfile: null,
+    cachedRole: null,
+    loading: false,
+    signIn: jest.fn(),
+    signUp: jest.fn(),
+  }),
+}))
+
+test('renders login screen for unauthenticated users', async () => {
+  render(<App />)
+  expect(await screen.findByText(/welcome back/i)).toBeInTheDocument()
+})

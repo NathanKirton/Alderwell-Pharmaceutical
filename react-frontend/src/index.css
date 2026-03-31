@@ -1,3 +1,35 @@
+:root {
+  /* Brand greens */
+  --color-primary: #1f5a3e;
+  --color-primary-dark: #174d34;
+  --color-primary-light: #3d8f68;
+  --color-primary-bg: #f6faf8;
+  --color-primary-border: #c6d5ce;
+
+  /* Neutral */
+  --color-text: #1f2937;
+  --color-text-muted: #64748b;
+  --color-border: #e3e8e4;
+  --color-surface: #fff;
+  --color-surface-subtle: #f8fbf9;
+
+  /* Status colours */
+  --color-success-bg: #ecf8ef;
+  --color-success-text: #1d6f38;
+  --color-warn-bg: #fff7e7;
+  --color-warn-text: #8a5f17;
+  --color-danger-bg: #fde9e8;
+  --color-danger-text: #9d2f2a;
+  --color-info-bg: #e8f0fc;
+  --color-info-text: #1a4fa3;
+
+  /* Radius / spacing */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-pill: 999px;
+}
+
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -5,6 +37,17 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+html {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 code {

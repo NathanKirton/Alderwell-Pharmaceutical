@@ -196,6 +196,22 @@
   background: linear-gradient(180deg, #5db282, #1f6b49);
 }
 
+.chartTimeline {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.chartTick {
+  text-align: center;
+  color: #5d7168;
+  font-size: 0.74rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .urgentCard {
   display: grid;
   gap: 10px;

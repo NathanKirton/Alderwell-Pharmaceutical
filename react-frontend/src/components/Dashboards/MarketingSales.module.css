@@ -268,6 +268,63 @@ h2 {
   background: #1f352a;
 }
 
+.insightsGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+.insightCard {
+  background: linear-gradient(180deg, #fbfcfc 0%, #f4f7f6 100%);
+  border: 1px solid #dbe5e1;
+  border-radius: 14px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.insightLabel {
+  color: #52645b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+
+.insightValueRow {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.insightValueRow h3 {
+  color: #1e3328;
+  font-size: 2rem;
+  line-height: 1;
+  margin: 0;
+}
+
+.insightValueRow span {
+  color: #64748b;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.insightTrack {
+  background: #dde6e2;
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.insightFill {
+  background: linear-gradient(90deg, #4f637e, #7388a2);
+  height: 100%;
+}
+
 /* CRM SECTION */
 .crmHeader {
   margin-bottom: 24px;
@@ -664,6 +721,174 @@ h2 {
 }
 
 /* CAMPAIGNS */
+.campaignsHero {
+  align-items: end;
+  background: linear-gradient(135deg, #f9fbfa 0%, #eef4f1 100%);
+  border: 1.5px solid #dbe5e1;
+  border-radius: 16px;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 22px;
+}
+
+.campaignEyebrow {
+  color: #4c6a5b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.campaignIntro {
+  color: #5e6d66;
+  margin: 8px 0 0;
+  max-width: 720px;
+}
+
+.campaignsControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.campaignSearch,
+.campaignFilter {
+  background: #fff;
+  border: 1.5px solid #d9e1df;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 11px 14px;
+}
+
+.campaignSearch {
+  min-width: 280px;
+}
+
+.campaignSearch:focus,
+.campaignFilter:focus {
+  border-color: #2e4d3d;
+  box-shadow: 0 0 0 3px rgba(46, 77, 61, 0.07);
+  outline: none;
+}
+
+.campaignStatsGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.campaignStatCard {
+  background: #fff;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 14px;
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.campaignStatCard strong {
+  color: #163026;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.campaignStatLabel {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.campaignStatMeta {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.featuredCampaign {
+  background: #fff;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 16px;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1.5fr 0.9fr;
+  margin-bottom: 20px;
+  padding: 22px;
+}
+
+.featuredMain,
+.featuredSideRail {
+  display: grid;
+  gap: 16px;
+}
+
+.featuredHeader {
+  align-items: start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.featuredHeader h3 {
+  color: #1f2937;
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+.featuredDescription {
+  color: #4b5563;
+  margin: 0;
+  max-width: 760px;
+}
+
+.featuredMetrics {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.featuredMetricLabel,
+.campaignMetaLabel {
+  color: #64748b;
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.featuredMetrics strong,
+.campaignCardGrid strong {
+  color: #1f2937;
+  font-size: 0.96rem;
+}
+
+.featuredHealthCard {
+  background: linear-gradient(180deg, #f8fbfa 0%, #f2f6f4 100%);
+  border: 1px solid #dbe5e1;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.featuredHealthCard strong {
+  color: #163026;
+  display: block;
+  font-size: 1.15rem;
+  margin-bottom: 6px;
+}
+
+.featuredHealthCard p {
+  color: #5d6d67;
+  margin: 0;
+}
+
 .campaignsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -675,18 +900,98 @@ h2 {
   border-radius: 12px;
   border: 1.5px solid #e3e8e4;
   padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.campaignCardHeader {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
 }
 
 .campaignCard h3 {
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   color: #333;
   font-size: 1.1rem;
 }
 
-.campaignCard p {
-  margin: 0 0 16px 0;
-  color: #666;
-  font-size: 0.95rem;
+.campaignMeta {
+  color: #64748b;
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.campaignDescription {
+  color: #4b5563;
+  margin: 0;
+  min-height: 42px;
+}
+
+.campaignStatusBadge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.statusActive {
+  background: #dff4e7;
+  color: #18603a;
+}
+
+.statusPlanning {
+  background: #e5eef8;
+  color: #2f5f8a;
+}
+
+.statusOnHold {
+  background: #fdf0cf;
+  color: #8b5d08;
+}
+
+.statusArchived {
+  background: #edf2f7;
+  color: #475569;
+}
+
+.campaignCardGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.campaignProgressWrap {
+  display: grid;
+  gap: 8px;
+}
+
+.campaignProgressHeader {
+  align-items: center;
+  color: #64748b;
+  display: flex;
+  font-size: 0.9rem;
+  justify-content: space-between;
+}
+
+.campaignFooterRow {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.campaignHealthPill {
+  background: #f2f6f4;
+  border-radius: 999px;
+  color: #305342;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 7px 10px;
 }
 
 .progressBar {
@@ -700,12 +1005,6 @@ h2 {
 .progress {
   height: 100%;
   background: linear-gradient(90deg, #2e4d3d, #2e7d32);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 600;
   transition: width 0.3s ease;
 }
 
@@ -861,6 +1160,25 @@ h2 {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 
+  .campaignsHero,
+  .featuredCampaign,
+  .featuredHeader {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .campaignStatsGrid,
+  .featuredMetrics,
+  .campaignCardGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .campaignSearch {
+    min-width: 0;
+    width: 100%;
+  }
+
   .materialsGrid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
@@ -981,8 +1299,31 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .campaignStatsGrid,
+  .featuredMetrics,
+  .campaignCardGrid {
+    grid-template-columns: 1fr;
+  }
+
   .campaignCard {
     padding: 16px;
+  }
+
+  .campaignsHero,
+  .featuredCampaign {
+    padding: 16px;
+  }
+
+  .campaignFooterRow,
+  .campaignsControls,
+  .campaignCardHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .campaignFilter,
+  .campaignSearch {
+    width: 100%;
   }
 
   .campaignCard h3 {

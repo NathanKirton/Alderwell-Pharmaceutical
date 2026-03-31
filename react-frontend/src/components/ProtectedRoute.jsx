@@ -1,10 +1,12 @@
 import React from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { normalizeRole } from '../utils/roleUtils'
 
 export function ProtectedRoute({ children, requiredRole }) {
   const { user, userProfile, loading, profileLoading, cachedRole } = useAuth()
-  const resolvedRole = userProfile?.role || cachedRole
+  const resolvedRole = normalizeRole(userProfile?.role || cachedRole)
+  const expectedRole = normalizeRole(requiredRole)
 
   if (loading) {
     return (
@@ -26,7 +28,7 @@ export function ProtectedRoute({ children, requiredRole }) {
     )
   }
 
-  if (requiredRole && resolvedRole !== requiredRole) {
+  if (requiredRole && resolvedRole !== expectedRole) {
     return <Navigate to="/no-access" replace />
   }
 

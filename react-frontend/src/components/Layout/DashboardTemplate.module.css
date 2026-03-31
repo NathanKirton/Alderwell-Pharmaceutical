@@ -17,6 +17,82 @@
   padding: 30px 40px;
 }
 
+.workspaceGuide {
+  background: linear-gradient(145deg, #ffffff 0%, #f4f9f6 100%);
+  border: 1px solid #dbe7e0;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.workspaceGuideHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.workspaceRole {
+  margin: 0;
+  color: #496556;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  font-size: 0.76rem;
+}
+
+.workspaceTitle {
+  margin: 6px 0 4px;
+  color: #183628;
+  font-size: 1.1rem;
+}
+
+.workspaceSummary {
+  margin: 0;
+  color: #5f6f67;
+  max-width: 760px;
+}
+
+.workspaceActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.workspaceActionBtn {
+  border: 1px solid #c9d8cf;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #224233;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.workspaceActionBtn:disabled {
+  background: #eaf2ed;
+  color: #577266;
+  cursor: default;
+}
+
+.workspaceCapabilities {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workspaceCapabilityPill {
+  border-radius: 999px;
+  background: #e8f3ed;
+  color: #244a39;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .mainArea h1 {
   margin: 0 0 20px 0;
   font-size: 2rem;
@@ -33,6 +109,14 @@
   .mainArea {
     padding: 20px;
     padding-bottom: 90px;
+  }
+
+  .workspaceGuideHeader {
+    flex-direction: column;
+  }
+
+  .workspaceActions {
+    justify-content: flex-start;
   }
 
   .mainArea h1 {

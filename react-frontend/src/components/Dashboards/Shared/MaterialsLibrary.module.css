@@ -1,0 +1,291 @@
+.hero {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.heroTop {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.heroCopy h1 {
+  margin: 0;
+}
+
+.heroCopy p {
+  color: #64748b;
+  margin: 8px 0 0;
+  max-width: 720px;
+}
+
+.statsGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.quickActionsGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.quickActionPanel {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbfa 100%);
+  border: 1px solid #dbe5e1;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.quickActionHeader {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.quickActionHeader h3 {
+  margin: 0;
+}
+
+.quickActionHeader p {
+  color: #64748b;
+  margin: 4px 0 0;
+}
+
+.quickFormGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.quickActionFooter {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.statCard {
+  background: linear-gradient(180deg, #ffffff 0%, #f7faf9 100%);
+  border: 1px solid #dbe5e1;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.statLabel {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.statValue {
+  color: #153524;
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.statValue strong {
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.statValue span {
+  align-self: end;
+  color: #64748b;
+  font-size: 0.86rem;
+  padding-bottom: 3px;
+}
+
+.statTrack {
+  background: #e5ece9;
+  border-radius: 999px;
+  height: 8px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.statFill {
+  background: linear-gradient(90deg, #264d39, #4d8b65);
+  height: 100%;
+}
+
+.toolbarWrap {
+  background: #fff;
+  border: 1px solid #dde6e2;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  padding: 14px;
+}
+
+.toolbarHeader {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.toolbarHeader h3 {
+  margin: 0;
+}
+
+.toolbarHeader p {
+  color: #64748b;
+  margin: 4px 0 0;
+}
+
+.folderPanel {
+  background: #fff;
+  border: 1px solid #dde6e2;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  padding: 14px;
+}
+
+.folderPanelHeader {
+  margin-bottom: 12px;
+}
+
+.folderPanelHeader h3 {
+  margin: 0;
+}
+
+.folderPanelHeader p {
+  color: #64748b;
+  margin: 4px 0 0;
+}
+
+.materialsWrap {
+  margin-top: 8px;
+}
+
+.cardHeader {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.materialTitle {
+  margin-right: 32px;
+}
+
+.statusRow {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.statusBadge {
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 9px;
+  text-transform: uppercase;
+}
+
+.statusApproved {
+  background: #dff4e7;
+  color: #18603a;
+}
+
+.statusPending {
+  background: #fdf0cf;
+  color: #8b5d08;
+}
+
+.statusRejected {
+  background: #fee3e1;
+  color: #9f2f27;
+}
+
+.statusDefault {
+  background: #edf2f7;
+  color: #475569;
+}
+
+.fileMeta {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.metaList {
+  display: grid;
+  gap: 6px;
+}
+
+.metaLabel {
+  color: #334155;
+  font-weight: 700;
+}
+
+.emptyState {
+  background: linear-gradient(180deg, #f8fbfa 0%, #f2f6f4 100%);
+  border: 1px dashed #c7d5cf;
+  border-radius: 16px;
+  color: #5b6f65;
+  padding: 28px;
+  text-align: center;
+}
+
+.emptyState strong {
+  color: #1f2937;
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+
+.loadingState {
+  color: #64748b;
+  padding: 16px 4px;
+}
+
+@media (max-width: 1080px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .heroTop,
+  .quickActionHeader,
+  .toolbarHeader,
+  .cardHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .heroActions,
+  .quickActionFooter {
+    justify-content: stretch;
+  }
+
+  .quickFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+}

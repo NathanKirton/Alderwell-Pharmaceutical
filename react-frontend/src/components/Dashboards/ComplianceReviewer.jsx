@@ -1,17 +1,62 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import DashboardTemplate from '../Layout/DashboardTemplate'
+import FlagMaterialModal from '../Layout/FlagMaterialModal'
+import MaterialsLibrary from './Shared/MaterialsLibrary'
 import styles from './ComplianceReviewer.module.css'
 import campaignStyles from './CampaignManagement.module.css'
-import { auditQueries, complianceQueries, materialQueries } from '../../services/supabaseHelpers'
-import { BarChartIcon, CheckCircleIcon, ClipboardIcon, FileIcon, FlagIcon, PlusIcon, VideoIcon } from '../Icons/IconSet'
+import { auditQueries, complianceQueries, folderQueries, materialQueries, campaignQueries } from '../../services/supabaseHelpers'
+import { BarChartIcon, CheckCircleIcon, ClipboardIcon, FileIcon, FlagIcon, VideoIcon } from '../Icons/IconSet'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'material-approval-centre', label: 'Material Approval Centre' },
   { id: 'materials', label: 'Materials' },
+  { id: 'campaign-logs', label: 'Campaign Logs' },
   { id: 'audit-logs', label: 'Audit Logs' },
   { id: 'flagged-interactions', label: 'Flagged Interactions' },
   { id: 'reporting-analytics', label: 'Reporting & Analytics' },
+]
+
+const WORKSPACE_CAPABILITIES = [
+  'Review and decide material approvals',
+  'Investigate and resolve compliance flags',
+  'Audit traceability across actions',
+  'Report risk and compliance trends',
+]
+
+const PAGE_INTENTS = {
+  dashboard: {
+    title: 'Compliance Oversight Dashboard',
+    description: 'Track live risk signals and move quickly to the exact review queue that needs attention.',
+  },
+  'material-approval-centre': {
+    title: 'Material Approval Centre',
+    description: 'Approve or reject submitted assets with notes to keep decisions transparent and auditable.',
+  },
+  materials: {
+    title: 'Material Evidence Library',
+    description: 'Inspect materials, versions, and flags in one place before or after review.',
+  },
+  'audit-logs': {
+    title: 'Audit Logs',
+    description: 'Trace who changed what and when to support governance and investigations.',
+  },
+  'flagged-interactions': {
+    title: 'Flagged Interactions',
+    description: 'Resolve open flags consistently and escalate high-risk issues without delay.',
+  },
+  'reporting-analytics': {
+    title: 'Compliance Reporting',
+    description: 'View trend metrics and risk concentration to inform policy and operations.',
+  },
+}
+
+const WORKFLOW_ACTIONS = [
+  { tabId: 'dashboard', label: 'Overview' },
+  { tabId: 'material-approval-centre', label: 'Review Queue' },
+  { tabId: 'flagged-interactions', label: 'Resolve Flags' },
+  { tabId: 'audit-logs', label: 'Open Audit Trail' },
+  { tabId: 'reporting-analytics', label: 'View Reporting' },
 ]
 
 const getFileIcon = (fileType) => {
@@ -53,19 +98,105 @@ export default function ComplianceReviewer() {
   const [materialSearch, setMaterialSearch] = useState('')
   const [materialTypeFilter, setMaterialTypeFilter] = useState('all')
   const [materialCampaignFilter, setMaterialCampaignFilter] = useState('all')
-  const [batchNote, setBatchNote] = useState('')
+  const [materialFolderFilter, setMaterialFolderFilter] = useState('all')
   const [reviewNotes, setReviewNotes] = useState({})
   const [materials, setMaterials] = useState([])
+  const [folders, setFolders] = useState([])
   const [pendingMaterials, setPendingMaterials] = useState([])
+  const [myPastApprovals, setMyPastApprovals] = useState([])
   const [auditLogs, setAuditLogs] = useState([])
+  const [campaignLogs, setCampaignLogs] = useState([])
+  const [campaigns, setCampaigns] = useState([])
+  const [campaignLogFilter, setCampaignLogFilter] = useState('all')
   const [flags, setFlags] = useState([])
   const [loading, setLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [newFolderCampaignId, setNewFolderCampaignId] = useState('')
+  const [uploadForm, setUploadForm] = useState({ campaignId: '', folderId: '', name: '' })
   const [materialToReplace, setMaterialToReplace] = useState(null)
   const [isReplacingMaterial, setIsReplacingMaterial] = useState(false)
   const [selectedMaterial, setSelectedMaterial] = useState(null)
-  const uploadInputRef = useRef(null)
+  const [materialVersions, setMaterialVersions] = useState([])
+  const [loadingMaterialVersions, setLoadingMaterialVersions] = useState(false)
+  const [downloadingVersionId, setDownloadingVersionId] = useState(null)
+  const [flaggingMaterial, setFlaggingMaterial] = useState(null)
   const replaceMaterialInputRef = useRef(null)
+  const [uploadFile, setUploadFile] = useState(null)
+
+  const handleUploadFileChange = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setUploadFile(file)
+    if (!uploadForm.name) {
+      setUploadForm((prev) => ({ ...prev, name: file.name }))
+    }
+  }
+
+  const handleSubmitUpload = async () => {
+    if (!uploadFile) {
+      setActionMessage('Please select a file.')
+      return
+    }
+    if (!uploadForm.name.trim()) {
+      setActionMessage('Please enter a material name.')
+      return
+    }
+
+    setIsUploading(true)
+    setActionMessage('Uploading material...')
+
+    const { error } = await materialQueries.submitMaterial(
+      uploadForm.campaignId || null,
+      {
+        name: uploadForm.name.trim(),
+        description: 'Uploaded from Compliance Reviewer materials page',
+        folder_id: uploadForm.folderId || null,
+      },
+      uploadFile
+    )
+
+    if (error) {
+      setActionMessage(`Upload failed: ${error}`)
+    } else {
+      setActionMessage(`${uploadForm.name.trim()} uploaded successfully.`)
+      setUploadForm({ campaignId: '', folderId: '', name: '' })
+      setUploadFile(null)
+      await loadData()
+    }
+
+    setIsUploading(false)
+  }
+
+  const resetUploadForm = () => {
+    setUploadForm({ campaignId: '', folderId: '', name: '' })
+    setUploadFile(null)
+  }
+
+  const handleCreateFolder = async () => {
+    const trimmedName = newFolderName.trim()
+    if (!trimmedName) {
+      setActionMessage('Folder name is required.')
+      return
+    }
+
+    const { error } = await folderQueries.createFolder({
+      name: trimmedName,
+      campaignId: newFolderCampaignId || null,
+    })
+
+    if (error) {
+      setActionMessage(`Folder creation failed: ${error}`)
+      return
+    }
+
+    setActionMessage(`Folder "${trimmedName}" created.`)
+    setNewFolderName('')
+    setNewFolderCampaignId('')
+    await loadData()
+  }
+
+
 
   useEffect(() => {
     loadData()
@@ -74,11 +205,15 @@ export default function ComplianceReviewer() {
   const loadData = async () => {
     setLoading(true)
 
-    const [allMaterialsResult, pendingResult, logsResult, flagsResult] = await Promise.all([
+    const [allMaterialsResult, pendingResult, myPastApprovalsResult, logsResult, campaignLogsResult, flagsResult, foldersResult, campaignsResult] = await Promise.all([
       materialQueries.getAllMaterials(),
       materialQueries.getPendingApprovals(),
+      materialQueries.getMyPastApprovals(),
       auditQueries.getActivityLogs(),
+      auditQueries.getActivityLogs({ resourceType: 'campaigns' }),
       complianceQueries.getFlags(),
+      folderQueries.getFolders(),
+      campaignQueries.getAllCampaigns(),
     ])
 
     if (allMaterialsResult.error) {
@@ -89,15 +224,28 @@ export default function ComplianceReviewer() {
       setActionMessage(`Failed to load pending approvals: ${pendingResult.error}`)
     }
 
+    if (myPastApprovalsResult.error) {
+      setActionMessage(`Failed to load your past approvals: ${myPastApprovalsResult.error}`)
+    }
+
     setMaterials(allMaterialsResult.data || [])
+    setFolders(foldersResult.data || [])
     setPendingMaterials(pendingResult.data || [])
+    setMyPastApprovals(myPastApprovalsResult.data || [])
     setAuditLogs(logsResult || [])
+    setCampaignLogs(campaignLogsResult || [])
     setFlags(flagsResult || [])
+    setCampaigns((campaignsResult && campaignsResult.data) || [])
     setLoading(false)
   }
+  // Filtered campaign logs by selected campaign
+  const filteredCampaignLogs = useMemo(() => {
+    if (campaignLogFilter === 'all') return campaignLogs
+    return campaignLogs.filter((log) => String(log.resource_id) === String(campaignLogFilter))
+  }, [campaignLogs, campaignLogFilter])
 
   const handleReviewMaterial = async (materialId, status) => {
-    const note = reviewNotes[materialId] || batchNote || `Updated by compliance reviewer: ${status}`
+    const note = reviewNotes[materialId] || `Updated by compliance reviewer: ${status}`
     const { error } = await materialQueries.reviewMaterial(materialId, status, note)
 
     if (error) {
@@ -110,15 +258,18 @@ export default function ComplianceReviewer() {
   }
 
   const handleResolveFlag = async (flagId, nextStatus) => {
-    const note = batchNote || `Flag reviewed and moved to ${nextStatus}`
-    const updated = await complianceQueries.resolveFlag(flagId, nextStatus, note)
+    const note = `Flag reviewed and moved to ${nextStatus}`
+    const { error } = await complianceQueries.resolveFlag(flagId, nextStatus, note)
 
-    if (!updated) {
-      setActionMessage('Failed to update flag status.')
+    if (error) {
+      setActionMessage(`Failed to update flag status: ${error}`)
       return
     }
 
     setActionMessage(`Flag ${flagId} moved to ${nextStatus}.`)
+    if ((nextStatus || '').toLowerCase() === 'under review') {
+      setFlagTab('investigation')
+    }
     await loadData()
   }
 
@@ -128,35 +279,31 @@ export default function ComplianceReviewer() {
       return
     }
 
-    const reasonInput = window.prompt('Why are you flagging this material for compliance review?', `Manual compliance flag for ${material.name || material.id}`)
-    if (reasonInput === null) {
-      return
+    setFlaggingMaterial(material)
+  }
+
+  const submitFlagForMaterial = async ({ reason, severity, details }) => {
+    if (!flaggingMaterial?.id) {
+      return { error: 'No material selected.' }
     }
 
-    const reason = reasonInput.trim()
-    if (!reason) {
-      setActionMessage('Flag cancelled: reason is required.')
-      return
-    }
-
-    const severityInput = (window.prompt('Flag severity (Low, Medium, High, Critical)', 'Medium') || 'Medium').trim()
-    const normalizedSeverity = severityInput.charAt(0).toUpperCase() + severityInput.slice(1).toLowerCase()
-    const severity = ['Low', 'Medium', 'High', 'Critical'].includes(normalizedSeverity) ? normalizedSeverity : 'Medium'
+    const normalizedSeverity = (severity || 'Medium').trim()
 
     const { error } = await complianceQueries.createFlag({
-      material_id: material.id,
-      reason,
-      severity,
+      material_id: flaggingMaterial.id,
+      reason: details ? `${reason}\n\nDetails: ${details}` : reason,
+      severity: ['Low', 'Medium', 'High', 'Critical'].includes(normalizedSeverity) ? normalizedSeverity : 'Medium',
       status: 'Open',
     })
 
     if (error) {
-      setActionMessage(`Failed to flag material: ${error}`)
-      return
+      return { error }
     }
 
-    setActionMessage(`Material ${material.name || material.id} flagged for compliance review.`)
+    setActionMessage(`Material ${flaggingMaterial.name || flaggingMaterial.id} flagged for compliance review.`)
+    setFlaggingMaterial(null)
     await loadData()
+    return { error: null }
   }
 
   const exportAuditCsv = () => {
@@ -181,37 +328,6 @@ export default function ComplianceReviewer() {
     link.click()
     URL.revokeObjectURL(url)
     setActionMessage('Audit logs exported.')
-  }
-
-  const handleUploadClick = () => {
-    uploadInputRef.current?.click()
-  }
-
-  const handleMaterialFileSelected = async (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setIsUploading(true)
-    setActionMessage('Uploading material...')
-
-    const { error } = await materialQueries.submitMaterial(
-      null,
-      {
-        name: file.name,
-        description: 'Uploaded from Compliance Reviewer materials page',
-      },
-      file
-    )
-
-    if (error) {
-      setActionMessage(`Upload failed: ${error}`)
-    } else {
-      setActionMessage(`${file.name} uploaded successfully.`)
-      await loadData()
-    }
-
-    setIsUploading(false)
-    event.target.value = ''
   }
 
   const handleReplaceMaterialClick = (material) => {
@@ -244,6 +360,37 @@ export default function ComplianceReviewer() {
     setIsReplacingMaterial(false)
     event.target.value = ''
     await loadData()
+  }
+
+  const openMaterialDetails = async (material) => {
+    setSelectedMaterial(material)
+    setLoadingMaterialVersions(true)
+
+    const { data, error } = await materialQueries.getMaterialVersions(material.id)
+    if (error) {
+      setActionMessage(`Version history unavailable: ${error}`)
+      setMaterialVersions([])
+      setLoadingMaterialVersions(false)
+      return
+    }
+
+    setMaterialVersions(data || [])
+    setLoadingMaterialVersions(false)
+  }
+
+  const handleDownloadMaterialVersion = async (version) => {
+    if (!version) return
+
+    setDownloadingVersionId(version.id)
+    const { data, error } = await materialQueries.getMaterialVersionDownloadUrl(version)
+    if (error) {
+      setActionMessage(error)
+      setDownloadingVersionId(null)
+      return
+    }
+
+    window.open(data.url, '_blank', 'noopener,noreferrer')
+    setDownloadingVersionId(null)
   }
 
   const filteredMaterials = useMemo(() => {
@@ -280,13 +427,35 @@ export default function ComplianceReviewer() {
         (materialCampaignFilter === 'unassigned' && !campaignName) ||
         campaignName === materialCampaignFilter.toLowerCase()
 
-      return matchesSearch && matchesType && matchesCampaign
+      const matchesFolder = materialFolderFilter === 'all' ||
+        (materialFolderFilter === 'unassigned' && !row.folder?.id) ||
+        row.folder?.id === materialFolderFilter
+
+      return matchesSearch && matchesType && matchesCampaign && matchesFolder
     })
-  }, [materials, materialSearch, materialTypeFilter, materialCampaignFilter])
+  }, [materials, materialSearch, materialTypeFilter, materialCampaignFilter, materialFolderFilter])
 
   const campaignNames = useMemo(() => {
     return Array.from(new Set(materials.map((item) => item.campaign?.name).filter(Boolean))).sort((a, b) => a.localeCompare(b))
   }, [materials])
+
+  const uploadCampaigns = useMemo(() => {
+    const byId = new Map()
+    materials.forEach((item) => {
+      if (item.campaign?.id && item.campaign?.name && !byId.has(item.campaign.id)) {
+        byId.set(item.campaign.id, { id: item.campaign.id, name: item.campaign.name })
+      }
+    })
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [materials])
+
+  const visibleFolders = useMemo(() => {
+    if (materialCampaignFilter === 'all' || materialCampaignFilter === 'unassigned') {
+      return folders
+    }
+    const campaign = materials.find((item) => item.campaign?.name === materialCampaignFilter)?.campaign
+    return folders.filter((folder) => folder.campaign_id === campaign?.id)
+  }, [folders, materialCampaignFilter, materials])
 
   const filteredAuditLogs = useMemo(() => {
     if (auditTab === 'all') return auditLogs
@@ -301,22 +470,34 @@ export default function ComplianceReviewer() {
 
   const filteredFlags = useMemo(() => {
     if (flagTab === 'pending') {
-      return flags.filter((row) => (row.status || '').toLowerCase() !== 'resolved')
+      return flags.filter((row) => {
+        const status = (row.status || '').toLowerCase()
+        return status === 'open' || status === 'false alarm'
+      })
     }
     if (flagTab === 'investigation') {
-      return flags.filter((row) => (row.status || '').toLowerCase().includes('investigation'))
+      return flags.filter((row) => (row.status || '').toLowerCase() === 'under review')
     }
     return flags.filter((row) => (row.status || '').toLowerCase() === 'resolved')
   }, [flagTab, flags])
 
   const urgentFlags = useMemo(() => {
     return flags
-      .filter((row) => (row.severity || '').toLowerCase() === 'high' && (row.status || '').toLowerCase() !== 'resolved')
+      .filter((row) => {
+        const severity = (row.severity || '').toLowerCase()
+        const status = (row.status || '').toLowerCase()
+        return (severity === 'high' || severity === 'critical') && status !== 'resolved'
+      })
       .slice(0, 3)
   }, [flags])
 
   const flaggedMaterialIds = useMemo(() => {
-    return new Set(flags.map((row) => row.material_id).filter(Boolean))
+    return new Set(
+      flags
+        .filter((row) => (row.status || '').toLowerCase() !== 'resolved')
+        .map((row) => row.material_id)
+        .filter(Boolean)
+    )
   }, [flags])
 
   const trendBars = useMemo(() => {
@@ -362,6 +543,31 @@ export default function ComplianceReviewer() {
     return bars
   }, [trendScope, materials])
 
+  const trendLabels = useMemo(() => {
+    const now = new Date()
+
+    if (trendScope === 'Day') {
+      const hourMs = 60 * 60 * 1000
+      return Array.from({ length: 7 }, (_, index) => {
+        const slotStart = new Date(now.getTime() - ((6 - index) * 4 * hourMs))
+        return slotStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      })
+    }
+
+    if (trendScope === 'Week') {
+      const dayMs = 24 * 60 * 60 * 1000
+      return Array.from({ length: 7 }, (_, index) => {
+        const day = new Date(now.getTime() - ((6 - index) * dayMs))
+        return day.toLocaleDateString([], { weekday: 'short' })
+      })
+    }
+
+    return Array.from({ length: 7 }, (_, index) => {
+      const month = new Date(now.getFullYear(), now.getMonth() - (6 - index), 1)
+      return month.toLocaleDateString([], { month: 'short' })
+    })
+  }, [trendScope])
+
   const maxTrendValue = useMemo(() => {
     const maxValue = Math.max(...trendBars, 0)
     return maxValue > 0 ? maxValue : 1
@@ -378,7 +584,15 @@ export default function ComplianceReviewer() {
 
   if (loading) {
     return (
-      <DashboardTemplate title="Compliance Reviewer Portal" tabs={TABS}>
+      <DashboardTemplate
+        title="Compliance Reviewer Portal"
+        tabs={TABS}
+        roleName="Compliance Reviewer Workspace"
+        roleSummary="This workspace links approvals, flag handling, and audit evidence so compliance decisions remain clear and defensible."
+        roleCapabilities={WORKSPACE_CAPABILITIES}
+        pageIntents={PAGE_INTENTS}
+        globalActions={WORKFLOW_ACTIONS}
+      >
         {() => (
           <div className={styles.tabContent}>
             <p className={styles.rowMeta}>Loading compliance data...</p>
@@ -389,9 +603,71 @@ export default function ComplianceReviewer() {
   }
 
   return (
-    <DashboardTemplate title="Compliance Reviewer Portal" tabs={TABS}>
-      {(activeTab) => {
+    <>
+      <DashboardTemplate
+        title="Compliance Reviewer Portal"
+        tabs={TABS}
+        roleName="Compliance Reviewer Workspace"
+        roleSummary="This workspace links approvals, flag handling, and audit evidence so compliance decisions remain clear and defensible."
+        roleCapabilities={WORKSPACE_CAPABILITIES}
+        pageIntents={PAGE_INTENTS}
+        globalActions={WORKFLOW_ACTIONS}
+      >
+      {(activeTab, setActiveTab) => {
         switch (activeTab) {
+                    case 'campaign-logs':
+                      return (
+                        <div className={styles.tabContent}>
+                          <div className={styles.pageHeader}>
+                            <h1>Campaign Activity Logs</h1>
+                            <p>Review all actions and changes related to campaigns for compliance and audit purposes.</p>
+                          </div>
+                          <div style={{ marginBottom: 16 }}>
+                            <label htmlFor="campaign-log-filter" style={{ fontWeight: 500, marginRight: 8 }}>Filter by Campaign:</label>
+                            <select
+                              id="campaign-log-filter"
+                              value={campaignLogFilter}
+                              onChange={e => setCampaignLogFilter(e.target.value)}
+                              style={{ minWidth: 180, padding: 4 }}
+                            >
+                              <option value="all">All Campaigns</option>
+                              {campaigns.map((c) => (
+                                <option key={c.id} value={c.id}>{c.name || c.id}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className={styles.tableCard}>
+                            <table className={styles.table}>
+                              <thead>
+                                <tr>
+                                  <th>Timestamp</th>
+                                  <th>User</th>
+                                  <th>Action</th>
+                                  <th>Campaign</th>
+                                  <th>Details</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {filteredCampaignLogs.length === 0 && (
+                                  <tr><td colSpan={5} className={styles.rowMeta}>No campaign activity logs found.</td></tr>
+                                )}
+                                {filteredCampaignLogs.map((log) => {
+                                  const campaign = campaigns.find(c => String(c.id) === String(log.resource_id))
+                                  return (
+                                    <tr key={log.id}>
+                                      <td>{log.timestamp ? new Date(log.timestamp).toLocaleString() : '-'}</td>
+                                      <td>{log.user?.full_name || log.user?.email || 'System'}</td>
+                                      <td>{log.action}</td>
+                                      <td>{campaign ? campaign.name : log.resource_id}</td>
+                                      <td><pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>{JSON.stringify(log.details, null, 2)}</pre></td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )
           case 'dashboard':
             return (
               <div className={styles.tabContent}>
@@ -434,6 +710,11 @@ export default function ComplianceReviewer() {
                         <div key={`trend-${index}`} style={{ height: `${Math.min(100, (height / maxTrendValue) * 100)}%` }} title={`${height} reviewed`}></div>
                       ))}
                     </div>
+                    <div className={styles.chartTimeline}>
+                      {trendLabels.map((label, index) => (
+                        <span key={`timeline-dashboard-${index}`} className={styles.chartTick}>{label}</span>
+                      ))}
+                    </div>
                     <p className={styles.rowMeta}>Based on real reviewed material events in the selected time window.</p>
                   </section>
 
@@ -446,7 +727,16 @@ export default function ComplianceReviewer() {
                       </div>
                     ))}
                     {urgentFlags.length === 0 && <p className={styles.rowMeta}>No urgent flags right now.</p>}
-                    <button type="button" className={styles.primaryBtn} onClick={() => setFlagTab('pending')}>View All Flagged</button>
+                    <button
+                      type="button"
+                      className={styles.primaryBtn}
+                      onClick={() => {
+                        setFlagTab('pending')
+                        setActiveTab('flagged-interactions')
+                      }}
+                    >
+                      View All Flagged
+                    </button>
                   </section>
                 </div>
 
@@ -538,192 +828,111 @@ export default function ComplianceReviewer() {
                   </table>
                 </div>
 
-                <div className={styles.noteCard}>
-                  <h4>Global Batch Actions</h4>
-                  <textarea className={styles.noteArea} placeholder="Add a global note to this batch..." value={batchNote} onChange={(e) => setBatchNote(e.target.value)}></textarea>
-                  <div className={styles.noteRow}>
-                    <span className={styles.rowMeta}>This note is used if a row comment is empty during approval/rejection.</span>
-                    <button type="button" className={styles.primaryBtn} onClick={() => setActionMessage('Batch note saved.')}>Post Note</button>
+                <div className={styles.tableCard}>
+                  <div className={styles.cardHeader}>
+                    <h3>My Past Approvals</h3>
+                    <span className={styles.rowMeta}>{myPastApprovals.length} review{myPastApprovals.length !== 1 ? 's' : ''}</span>
                   </div>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Material ID</th>
+                        <th>Asset Name</th>
+                        <th>Campaign</th>
+                        <th>Decision</th>
+                        <th>Reviewed On</th>
+                        <th>Comment</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myPastApprovals.map((row) => (
+                        <tr key={`history-${row.id}-${row.reviewed_at || row.updated_at || row.created_at}`}>
+                          <td>{row.id}</td>
+                          <td>{row.name || 'Untitled'}</td>
+                          <td>{row.campaign?.name || 'No campaign'}</td>
+                          <td><span className={styles.badge}>{row.status || 'Reviewed'}</span></td>
+                          <td>{row.reviewed_at ? new Date(row.reviewed_at).toLocaleString() : '-'}</td>
+                          <td>{row.review_notes || 'No comment added'}</td>
+                        </tr>
+                      ))}
+                      {myPastApprovals.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className={styles.rowMeta}>No past approvals found for your account.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )
 
           case 'materials':
             return (
-              <div className={styles.tabContent}>
-                {actionMessage && <p className={styles.rowMeta}>{actionMessage}</p>}
-                <input
-                  ref={uploadInputRef}
-                  type="file"
-                  hidden
-                  onChange={handleMaterialFileSelected}
-                />
-                <input
-                  ref={replaceMaterialInputRef}
-                  type="file"
-                  hidden
-                  onChange={handleReplaceMaterialSelected}
-                />
-
-                <div className={campaignStyles.pageHeaderRow}>
-                  <div>
-                    <h1>Materials Library</h1>
-                    <p>Manage and organise your campaign assets. {materials.length} total.</p>
-                  </div>
-                  <button
-                    type="button"
-                    className={campaignStyles.primaryBtn}
-                    onClick={handleUploadClick}
-                    disabled={isUploading}
-                  >
-                    <PlusIcon size={16} /> {isUploading ? 'Uploading...' : 'Upload Material'}
-                  </button>
-                </div>
-
-                <div className={campaignStyles.toolbar}>
-                  <input
-                    className={campaignStyles.searchInput}
-                    placeholder="Search materials by name, type or status..."
-                    value={materialSearch}
-                    onChange={(e) => setMaterialSearch(e.target.value)}
-                  />
-                  <select
-                    className={campaignStyles.filterSelect}
-                    value={materialCampaignFilter}
-                    onChange={(e) => setMaterialCampaignFilter(e.target.value)}
-                  >
-                    <option value="all">All Campaigns</option>
-                    <option value="unassigned">Unassigned</option>
-                    {campaignNames.map((name) => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={campaignStyles.materialTabs}>
-                  {[
-                    { id: 'all', label: 'All Assets' },
-                    { id: 'pdf', label: 'PDFs' },
-                    { id: 'video', label: 'Videos' },
-                    { id: 'image', label: 'Images' },
-                    { id: 'ppt', label: 'Presentations' },
-                    { id: 'other', label: 'Other' },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      className={`${campaignStyles.tabPill} ${materialTypeFilter === tab.id ? campaignStyles.activePill : ''}`}
-                      onClick={() => setMaterialTypeFilter(tab.id)}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className={campaignStyles.materialsGrid}>
-                  {visibleMaterials.map((material) => {
-                    const Icon = getFileIcon(material.file_type)
-                    const isFlagged = flaggedMaterialIds.has(material.id)
-                    return (
-                      <div className={campaignStyles.materialCard} key={material.id}>
-                        <div className={campaignStyles.materialIcon}><Icon size={32} /></div>
-                        <button
-                          type="button"
-                          className={`${campaignStyles.flagIconBtn} ${campaignStyles.cardFlagTopRight} ${isFlagged ? campaignStyles.flagIconBtnActive : ''}`}
-                          onClick={() => handleFlagMaterial(material)}
-                          title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                          aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                        >
-                          <FlagIcon size={16} active={isFlagged} />
-                        </button>
-                        <h4>{material.name || 'Untitled'}</h4>
-                        <p>{(material.file_type || 'file').toUpperCase()} • {material.status || 'Submitted'}</p>
-                        <p className={campaignStyles.rowMeta}>{material.campaign?.name ? `Campaign: ${material.campaign.name}` : 'Unassigned'}</p>
-                        <p className={campaignStyles.rowMeta}>Updated {material.updated_at ? new Date(material.updated_at).toLocaleString('en-GB') : 'N/A'}</p>
-                        <p className={campaignStyles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
-                        <div className={campaignStyles.materialCardActions}>
-                          <button
-                            type="button"
-                            className={campaignStyles.linkBtn}
-                            onClick={() => setSelectedMaterial(material)}
-                          >
-                            Details
-                          </button>
-                          <button
-                            type="button"
-                            className={campaignStyles.linkBtn}
-                            onClick={() => handleReplaceMaterialClick(material)}
-                            disabled={isReplacingMaterial}
-                          >
-                            {isReplacingMaterial && materialToReplace?.id === material.id ? 'Updating…' : 'Replace'}
-                          </button>
-                          <button
-                            type="button"
-                            className={campaignStyles.linkBtn}
-                            disabled={(material.status || '').toLowerCase() !== 'approved'}
-                            title={(material.status || '').toLowerCase() !== 'approved' ? 'Only approved materials can be downloaded' : 'Download file'}
-                            onClick={async () => {
-                              const { data, error } = await materialQueries.getApprovedMaterialDownloadUrl(material)
-                              if (error) {
-                                setActionMessage(error)
-                                return
-                              }
-                              window.open(data.url, '_blank', 'noopener,noreferrer')
-                            }}
-                          >
-                            Download
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {!loading && visibleMaterials.length === 0 && <p className={campaignStyles.rowMeta}>No materials found.</p>}
-                  {loading && <p className={campaignStyles.rowMeta}>Loading materials...</p>}
-                </div>
-
-                {selectedMaterial && (
-                  <div className={campaignStyles.modalBackdrop} onClick={() => setSelectedMaterial(null)}>
-                    <div className={campaignStyles.modalCard} onClick={(e) => e.stopPropagation()}>
-                      <div className={campaignStyles.cardHeader}>
-                        <h3>{selectedMaterial.name || 'Material details'}</h3>
-                        <button type="button" className={campaignStyles.pageBtn} onClick={() => setSelectedMaterial(null)}>Close</button>
-                      </div>
-                      <p className={campaignStyles.rowMeta}>ID: {selectedMaterial.id}</p>
-                      <p className={campaignStyles.rowMeta}>Status: <strong>{selectedMaterial.status || 'Unknown'}</strong></p>
-                      <p className={campaignStyles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
-                      <p className={campaignStyles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
-                      <div className={campaignStyles.materialCardActions}>
-                        <button
-                          type="button"
-                          className={`${campaignStyles.flagIconBtn} ${flaggedMaterialIds.has(selectedMaterial.id) ? campaignStyles.flagIconBtnActive : ''}`}
-                          onClick={() => handleFlagMaterial(selectedMaterial)}
-                          title={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                          aria-label={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                        >
-                          <FlagIcon size={16} active={flaggedMaterialIds.has(selectedMaterial.id)} />
-                        </button>
-                      </div>
-                      <h4 style={{ margin: '12px 0 6px' }}>Timeline</h4>
-                      <div className={campaignStyles.timelineList}>
-                        {buildMaterialTimeline(selectedMaterial).map((entry) => (
-                          <div key={entry.id} className={campaignStyles.timelineItem}>
-                            <span className={campaignStyles.timelineDot}></span>
-                            <div>
-                              <strong>{entry.label}</strong>
-                              <p className={campaignStyles.rowMeta}>By {entry.by}</p>
-                              <p className={campaignStyles.rowMeta}>{new Date(entry.at).toLocaleString('en-GB')}</p>
-                            </div>
-                          </div>
-                        ))}
-                        {buildMaterialTimeline(selectedMaterial).length === 0 && (
-                          <p className={campaignStyles.rowMeta}>No timeline events available.</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <MaterialsLibrary
+                tabClassName={styles.tabContent}
+                actionMessage={actionMessage}
+                actionMessageClassName={styles.rowMeta}
+                replaceInputRef={replaceMaterialInputRef}
+                onReplaceChange={handleReplaceMaterialSelected}
+                uploadButtonLabel="Upload Material"
+                isUploading={isUploading}
+                materials={materials}
+                visibleMaterials={visibleMaterials}
+                loading={loading}
+                materialSearch={materialSearch}
+                onMaterialSearchChange={setMaterialSearch}
+                materialCampaignFilter={materialCampaignFilter}
+                onMaterialCampaignFilterChange={setMaterialCampaignFilter}
+                campaignNames={campaignNames}
+                materialFolderFilter={materialFolderFilter}
+                onMaterialFolderFilterChange={setMaterialFolderFilter}
+                visibleFolders={visibleFolders}
+                materialTypeFilter={materialTypeFilter}
+                onMaterialTypeFilterChange={setMaterialTypeFilter}
+                getFileIcon={getFileIcon}
+                flaggedMaterialIds={flaggedMaterialIds}
+                onFlagMaterial={handleFlagMaterial}
+                getMaterialEditorName={getMaterialEditorName}
+                onOpenDetails={openMaterialDetails}
+                onReplaceMaterial={handleReplaceMaterialClick}
+                isReplacingMaterial={isReplacingMaterial}
+                replacingMaterialId={materialToReplace?.id || null}
+                onDownloadMaterial={async (material) => {
+                  const { data, error } = await materialQueries.getApprovedMaterialDownloadUrl(material)
+                  if (error) {
+                    setActionMessage(error)
+                    return
+                  }
+                  window.open(data.url, '_blank', 'noopener,noreferrer')
+                }}
+                uploadManager={{
+                  enabled: true,
+                  form: uploadForm,
+                  fileName: uploadFile?.name || '',
+                  campaigns: uploadCampaigns,
+                  folders,
+                  onNameChange: (value) => setUploadForm((prev) => ({ ...prev, name: value })),
+                  onCampaignChange: (value) => setUploadForm((prev) => ({
+                    ...prev,
+                    campaignId: value,
+                    folderId: prev.folderId && !folders.some((folder) => folder.id === prev.folderId && (!value || !folder.campaign_id || folder.campaign_id === value)) ? '' : prev.folderId,
+                  })),
+                  onFolderChange: (value) => setUploadForm((prev) => ({ ...prev, folderId: value })),
+                  onFileChange: handleUploadFileChange,
+                  onSubmit: handleSubmitUpload,
+                  onReset: resetUploadForm,
+                }}
+                folderManager={{
+                  enabled: true,
+                  newFolderName,
+                  onNewFolderNameChange: setNewFolderName,
+                  newFolderCampaignId,
+                  onNewFolderCampaignIdChange: setNewFolderCampaignId,
+                  campaigns: uploadCampaigns,
+                  folders,
+                  onCreateFolder: handleCreateFolder,
+                }}
+              />
             )
 
           case 'audit-logs':
@@ -826,7 +1035,7 @@ export default function ComplianceReviewer() {
                               <span className={styles.rowMeta}>Resolved</span>
                             ) : (
                               <>
-                                <button type="button" className={styles.linkBtn} onClick={() => handleResolveFlag(row.id, 'Under Investigation')}>Investigate</button>
+                                <button type="button" className={styles.linkBtn} onClick={() => handleResolveFlag(row.id, 'Under Review')}>Investigate</button>
                                 {' / '}
                                 <button type="button" className={styles.linkBtn} onClick={() => handleResolveFlag(row.id, 'Resolved')}>Resolve</button>
                               </>
@@ -840,7 +1049,7 @@ export default function ComplianceReviewer() {
 
                 <div className={styles.noteCard}>
                   <h4>Resolution Notes</h4>
-                  <p>Use batch note above to attach a standard reason when progressing multiple records.</p>
+                  <p>A default system note is stored automatically for each Investigate or Resolve action.</p>
                 </div>
               </div>
             )
@@ -868,6 +1077,11 @@ export default function ComplianceReviewer() {
                         <div key={`analytics-${index}`} style={{ height: `${Math.min(100, (height / maxTrendValue) * 100)}%` }} title={`${height} reviewed`}></div>
                       ))}
                     </div>
+                    <div className={styles.chartTimeline}>
+                      {trendLabels.map((label, index) => (
+                        <span key={`timeline-analytics-${index}`} className={styles.chartTick}>{label}</span>
+                      ))}
+                    </div>
                   </div>
                   <div className={styles.chartCard}>
                     <h3>Risk Distribution by Severity</h3>
@@ -892,6 +1106,83 @@ export default function ComplianceReviewer() {
             return null
         }
       }}
-    </DashboardTemplate>
+      </DashboardTemplate>
+
+      {selectedMaterial && (
+        <div className={campaignStyles.modalBackdrop} onClick={() => setSelectedMaterial(null)}>
+          <div className={campaignStyles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div className={campaignStyles.cardHeader}>
+              <h3>{selectedMaterial.name || 'Material details'}</h3>
+              <button type="button" className={campaignStyles.pageBtn} onClick={() => setSelectedMaterial(null)}>Close</button>
+            </div>
+            <p className={campaignStyles.rowMeta}>ID: {selectedMaterial.id}</p>
+            <p className={campaignStyles.rowMeta}>Status: <strong>{selectedMaterial.status || 'Unknown'}</strong></p>
+            <p className={campaignStyles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
+            <p className={campaignStyles.rowMeta}>Folder: {selectedMaterial.folder?.name || 'No folder'}</p>
+            <p className={campaignStyles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
+            <div className={campaignStyles.materialCardActions}>
+              <button
+                type="button"
+                className={`${campaignStyles.flagIconBtn} ${flaggedMaterialIds.has(selectedMaterial.id) ? campaignStyles.flagIconBtnActive : ''}`}
+                onClick={() => handleFlagMaterial(selectedMaterial)}
+                title={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                aria-label={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
+              >
+                <FlagIcon size={16} active={flaggedMaterialIds.has(selectedMaterial.id)} />
+              </button>
+            </div>
+            <h4 style={{ margin: '12px 0 6px' }}>Timeline</h4>
+            <div className={campaignStyles.timelineList}>
+              {buildMaterialTimeline(selectedMaterial).map((entry) => (
+                <div key={entry.id} className={campaignStyles.timelineItem}>
+                  <span className={campaignStyles.timelineDot}></span>
+                  <div>
+                    <strong>{entry.label}</strong>
+                    <p className={campaignStyles.rowMeta}>By {entry.by}</p>
+                    <p className={campaignStyles.rowMeta}>{new Date(entry.at).toLocaleString('en-GB')}</p>
+                  </div>
+                </div>
+              ))}
+              {buildMaterialTimeline(selectedMaterial).length === 0 && (
+                <p className={campaignStyles.rowMeta}>No timeline events available.</p>
+              )}
+            </div>
+            <h4 style={{ margin: '14px 0 6px' }}>Version History</h4>
+            <div className={campaignStyles.timelineList}>
+              {loadingMaterialVersions && <p className={campaignStyles.rowMeta}>Loading versions...</p>}
+              {!loadingMaterialVersions && materialVersions.map((version) => (
+                <div key={version.id} className={campaignStyles.timelineItem}>
+                  <span className={campaignStyles.timelineDot}></span>
+                  <div>
+                    <strong>Version {version.version_number}</strong>
+                    <p className={campaignStyles.rowMeta}>{version.file_type || 'file'} uploaded by {version.uploader?.full_name || version.uploader?.email || 'Unknown user'}</p>
+                    <p className={campaignStyles.rowMeta}>{version.created_at ? new Date(version.created_at).toLocaleString('en-GB') : 'No timestamp'}</p>
+                    {version.change_reason && <p className={campaignStyles.rowMeta}>Reason: {version.change_reason}</p>}
+                    <button
+                      type="button"
+                      className={campaignStyles.linkBtn}
+                      onClick={() => handleDownloadMaterialVersion(version)}
+                      disabled={downloadingVersionId === version.id}
+                    >
+                      {downloadingVersionId === version.id ? 'Preparing download...' : 'Download'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {!loadingMaterialVersions && materialVersions.length === 0 && (
+                <p className={campaignStyles.rowMeta}>No versions captured yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <FlagMaterialModal
+        isOpen={Boolean(flaggingMaterial)}
+        material={flaggingMaterial}
+        onClose={() => setFlaggingMaterial(null)}
+        onSubmit={submitFlagForMaterial}
+      />
+    </>
   )
 }

@@ -1,19 +1,24 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import DashboardTemplate from '../Layout/DashboardTemplate'
+import Avatar from '../Shared/Avatar'
+import FlagMaterialModal from '../Layout/FlagMaterialModal'
+import MaterialsLibrary from './Shared/MaterialsLibrary'
 import styles from './LiaisonOfficer.module.css'
 import campaignStyles from './CampaignManagement.module.css'
-import { complianceQueries, materialQueries, taskQueries, visitQueries } from '../../services/supabaseHelpers'
+import { complianceQueries, folderQueries, hcpQueries, materialQueries, taskQueries, visitQueries } from '../../services/supabaseHelpers'
 import {
   PlusIcon,
   CalendarIcon,
   ClipboardIcon,
   FileIcon,
   FlagIcon,
-  UserGroupIcon,
   BarChartIcon,
   VideoIcon,
   CheckCircleIcon,
+  // Add BinIcon for delete
 } from '../Icons/IconSet'
+
+
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -23,104 +28,54 @@ const TABS = [
   { id: 'materials', label: 'Materials' },
 ]
 
+const WORKSPACE_CAPABILITIES = [
+  'Plan and log HCP visits',
+  'Track visit outcomes and follow-ups',
+  'Execute field tasks',
+  'Use approved field materials',
+]
+
+const PAGE_INTENTS = {
+  dashboard: {
+    title: 'Liaison Field Overview',
+    description: 'See today’s schedule, task pressure, and key actions before heading into the field.',
+  },
+  'log-visit': {
+    title: 'Visit Logging',
+    description: 'Capture visit details with complete context so downstream teams can act on outcomes quickly.',
+  },
+  'my-visits': {
+    title: 'Visit History',
+    description: 'Review outcomes and update pending visits to keep timelines and reporting accurate.',
+  },
+  tasks: {
+    title: 'Field Task Board',
+    description: 'Progress tasks from open to completed and keep campaign owners informed.',
+  },
+  materials: {
+    title: 'Field Materials',
+    description: 'Access approved content for visits and stay compliant with the latest assets.',
+  },
+}
+
+const WORKFLOW_ACTIONS = [
+  { tabId: 'dashboard', label: 'Overview' },
+  { tabId: 'log-visit', label: 'Log Visit' },
+  { tabId: 'my-visits', label: 'Review Visits' },
+  { tabId: 'tasks', label: 'Open Tasks' },
+  { tabId: 'materials', label: 'Approved Materials' },
+]
+
 const QUICK_ACTIONS = [
   { id: 'new-log', label: 'New Log', icon: PlusIcon },
   { id: 'schedule', label: 'Schedule Visit', icon: CalendarIcon },
-  { id: 'order-samples', label: 'Order Samples', icon: ClipboardIcon },
   { id: 'submit-report', label: 'Submit Report', icon: FileIcon },
 ]
 
-const SCHEDULE = [
-  {
-    id: 1,
-    time: '09:00 AM',
-    location: 'St. Jude Medical Center',
-    detail: 'Dr. Helena Vance • Product Introduction',
-    status: 'Confirmed',
-  },
-  {
-    id: 2,
-    time: '11:30 AM',
-    location: 'City General Pharmacy',
-    detail: 'Inventory Check • Mark Lawson',
-    status: 'In-Transit',
-  },
-  {
-    id: 3,
-    time: '02:00 PM',
-    location: 'Alderwell Internal Sync',
-    detail: 'Digital Room 4 • Regional Strategy',
-    status: 'Internal',
-  },
-  {
-    id: 4,
-    time: '04:15 PM',
-    location: 'Westside Clinic',
-    detail: 'Dr. Marcus Webb • Clinical Trial Data',
-    status: 'Pending',
-  },
-]
-
-const VISITS = [
-  {
-    id: 1,
-    hcp: 'Dr. Helena Vance',
-    organisation: 'St. Jude Medical Center',
-    date: '24 Oct 2023',
-    type: 'Product Introduction',
-    outcome: 'Follow-up Required',
-  },
-  {
-    id: 2,
-    hcp: 'Mark Lawson',
-    organisation: 'City General Pharmacy',
-    date: '22 Oct 2023',
-    type: 'Inventory Review',
-    outcome: 'Closed',
-  },
-  {
-    id: 3,
-    hcp: 'Dr. Priya Shah',
-    organisation: 'Northgate Clinic',
-    date: '19 Oct 2023',
-    type: 'Safety Protocol Review',
-    outcome: 'Pending Report',
-  },
-]
-
-const TASKS = [
-  {
-    id: 1,
-    title: 'Schedule specialist referral for Patient #8821',
-    detail: 'Pending lab results verification from morning visit.',
-    location: "St. Mary's - Room 402",
-    due: '24 Oct 2023',
-    priority: 'High',
-  },
-  {
-    id: 2,
-    title: 'Update insurance documentation',
-    detail: 'Liaise with billing regarding the outlier case in Ward B.',
-    location: 'Central Clinic',
-    due: '25 Oct 2023',
-    priority: 'Medium',
-  },
-  {
-    id: 3,
-    title: 'Quarterly feedback survey collection',
-    detail: 'General follow-up post-discharge for oncology patients.',
-    location: 'Oncology Dept.',
-    due: '01 Nov 2023',
-    priority: 'Low',
-  },
-  {
-    id: 4,
-    title: 'Emergency medication procurement',
-    detail: 'Coordinate with pharmacy for immediate delivery to ICU.',
-    location: 'ICU North',
-    due: '24 Oct 2023',
-    priority: 'High',
-  },
+const TASK_COLUMNS = [
+  { id: 'Open', label: 'To Do' },
+  { id: 'In Progress', label: 'In Progress' },
+  { id: 'Completed', label: 'Completed' },
 ]
 
 const getFileIcon = (fileType) => {
@@ -140,6 +95,13 @@ const getMaterialEditorName = (material) => {
     'Unknown'
 }
 
+const normalizeTaskStatus = (status) => {
+  const value = String(status || '').trim().toLowerCase()
+  if (value === 'completed' || value === 'done' || value === 'closed') return 'Completed'
+  if (value === 'in progress' || value === 'in-progress' || value === 'progress') return 'In Progress'
+  return 'Open'
+}
+
 const buildMaterialTimeline = (material) => {
   if (!material) return []
   const uploaderName = material.uploader?.full_name || material.uploader?.email || 'Unknown user'
@@ -156,68 +118,193 @@ const buildMaterialTimeline = (material) => {
 
 export default function LiaisonOfficer() {
   const [taskList, setTaskList] = useState([])
+  const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState(null);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
+    // Delete task handler
+    const handleDeleteTask = async (taskId) => {
+      setIsDeletingTask(true);
+      const { error } = await taskQueries.deleteTask(taskId);
+      if (error) {
+        setActionMessage('Failed to delete task: ' + error);
+        setIsDeletingTask(false);
+        return;
+      }
+      setTaskList((prev) => prev.filter((task) => task.id !== taskId));
+      setActionMessage('Task deleted.');
+      setDeleteConfirmTaskId(null);
+      setIsDeletingTask(false);
+    };
   const [visits, setVisits] = useState([])
+  const [hcpList, setHcpList] = useState([])
   const [materials, setMaterials] = useState([])
+  const [visitOutcomeFilter, setVisitOutcomeFilter] = useState('All')
+  const [visitUpdateForm, setVisitUpdateForm] = useState({ visitId: '', outcome: 'Pending', feedback: '' })
+  const [isSavingVisitUpdate, setIsSavingVisitUpdate] = useState(false)
+  const [isScheduleFormOpen, setIsScheduleFormOpen] = useState(false)
+  const [scheduleForm, setScheduleForm] = useState({ hcpId: '', visitDate: '', visitType: 'In-person', notes: '' })
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false)
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false)
+  const [isSavingTask, setIsSavingTask] = useState(false)
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    priority: 'Medium',
+  })
   const [priorityFilter, setPriorityFilter] = useState('All')
+  const [assigneeFilter, setAssigneeFilter] = useState('All')
   const [taskSearch, setTaskSearch] = useState('')
   const [materialSearch, setMaterialSearch] = useState('')
   const [materialTypeFilter, setMaterialTypeFilter] = useState('all')
   const [materialCampaignFilter, setMaterialCampaignFilter] = useState('all')
+  const [materialFolderFilter, setMaterialFolderFilter] = useState('all')
   const [actionMessage, setActionMessage] = useState('')
   const [isUploading, setIsUploading] = useState(false)
   const [materialToReplace, setMaterialToReplace] = useState(null)
   const [isReplacingMaterial, setIsReplacingMaterial] = useState(false)
   const [selectedMaterial, setSelectedMaterial] = useState(null)
+  const [materialVersions, setMaterialVersions] = useState([])
+  const [loadingMaterialVersions, setLoadingMaterialVersions] = useState(false)
+  const [downloadingVersionId, setDownloadingVersionId] = useState(null)
+  const [flaggingMaterial, setFlaggingMaterial] = useState(null)
+  const [folders, setFolders] = useState([])
+  const [newFolderName, setNewFolderName] = useState('')
+  const [newFolderCampaignId, setNewFolderCampaignId] = useState('')
+  const [uploadForm, setUploadForm] = useState({ campaignId: '', folderId: '', name: '' })
   const [flaggedMaterialIds, setFlaggedMaterialIds] = useState(new Set())
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [loadingVisits, setLoadingVisits] = useState(true)
   const [loadingMaterials, setLoadingMaterials] = useState(true)
+  const [draggedTaskId, setDraggedTaskId] = useState(null)
+  const [dropTargetStatus, setDropTargetStatus] = useState('')
+  const [mobileDraggingTaskId, setMobileDraggingTaskId] = useState(null)
   const [visitForm, setVisitForm] = useState({
+    hcpId: '',
     hcpName: '',
     dateOfVisit: '',
     durationMinutes: '',
     topics: [],
     notes: '',
+    complianceConfirmed: false,
   })
-  const uploadInputRef = useRef(null)
   const replaceMaterialInputRef = useRef(null)
+  const [uploadFile, setUploadFile] = useState(null)
 
-  useEffect(() => {
-    loadTasks()
-    loadVisits()
-    loadMaterials()
-  }, [])
+  const formatPriority = (priority) => {
+    const normalized = (priority || '').toLowerCase()
+    if (normalized === 'high') return 'High'
+    if (normalized === 'low') return 'Low'
+    return 'Medium'
+  }
 
-  const loadTasks = async () => {
+  const handleUploadFileChange = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setUploadFile(file)
+    if (!uploadForm.name) {
+      setUploadForm((prev) => ({ ...prev, name: file.name }))
+    }
+  }
+
+  const handleSubmitUpload = async () => {
+    if (!uploadFile) {
+      setActionMessage('Please select a file.')
+      return
+    }
+    if (!uploadForm.name.trim()) {
+      setActionMessage('Please enter a material name.')
+      return
+    }
+
+    setIsUploading(true)
+    setActionMessage('Uploading material...')
+
+    const { error } = await materialQueries.submitMaterial(
+      uploadForm.campaignId || null,
+      {
+        name: uploadForm.name.trim(),
+        description: 'Uploaded from Liaison Officer dashboard',
+        folder_id: uploadForm.folderId || null,
+      },
+      uploadFile
+    )
+
+    if (error) {
+      setActionMessage(`Upload failed: ${error}`)
+    } else {
+      setActionMessage(`${uploadForm.name.trim()} uploaded successfully.`)
+      setUploadForm({ campaignId: '', folderId: '', name: '' })
+      setUploadFile(null)
+      await loadMaterials()
+    }
+
+    setIsUploading(false)
+  }
+
+  const resetUploadForm = () => {
+    setUploadForm({ campaignId: '', folderId: '', name: '' })
+    setUploadFile(null)
+  }
+
+  const handleCreateFolder = async () => {
+    const trimmedName = newFolderName.trim()
+    if (!trimmedName) {
+      setActionMessage('Folder name is required.')
+      return
+    }
+
+    const { error } = await folderQueries.createFolder({
+      name: trimmedName,
+      campaignId: newFolderCampaignId || null,
+    })
+
+    if (error) {
+      setActionMessage(`Folder creation failed: ${error}`)
+      return
+    }
+
+    setActionMessage(`Folder "${trimmedName}" created.`)
+    setNewFolderName('')
+    setNewFolderCampaignId('')
+    await loadMaterials()
+  }
+
+  const loadTasks = useCallback(async () => {
     setLoadingTasks(true)
     const { data, error } = await taskQueries.getCurrentUserTasks()
     if (error) {
       setActionMessage(`Failed to load tasks: ${error}`)
-      setTaskList(TASKS)
+      setTaskList([])
       setLoadingTasks(false)
       return
     }
 
-    const mappedTasks = (data || []).map((task, index) => ({
+    const mappedTasks = (data || []).map((task) => ({
       id: task.id,
       title: task.title,
       detail: task.description || 'Task details not provided.',
       location: task.related_campaign_id || 'General',
-      due: task.due_date || 'No due date',
-      priority: task.priority || ['Low', 'Medium', 'High'][index % 3],
-      status: task.status,
+      due: task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB') : 'No due date',
+      priority: formatPriority(task.priority),
+      status: normalizeTaskStatus(task.status),
+      assignedTo: task.assignee?.full_name || task.assignee?.email || 'You',
+      assignedBy: task.creator?.full_name || task.creator?.email || 'You',
+      assignedToAvatar: task.assignee?.avatar_url || task.assignee?.profile_picture_url || null,
+      assignedByAvatar: task.creator?.avatar_url || task.creator?.profile_picture_url || null,
+      assignedToId: task.assigned_to,
+      createdById: task.created_by,
     }))
 
     setTaskList(mappedTasks)
     setLoadingTasks(false)
-  }
+  }, [])
 
-  const loadVisits = async () => {
+  const loadVisits = useCallback(async () => {
     setLoadingVisits(true)
     const rows = await visitQueries.getMyVisits()
     if (!rows) {
       setActionMessage('Failed to load visits.')
-      setVisits(VISITS)
+      setVisits([])
       setLoadingVisits(false)
       return
     }
@@ -227,30 +314,86 @@ export default function LiaisonOfficer() {
       hcp: visit.hcp?.name || 'Unknown HCP',
       organisation: visit.hcp?.organisation || 'Unknown organisation',
       date: visit.visit_date ? new Date(visit.visit_date).toLocaleDateString('en-GB') : 'N/A',
+      time: visit.visit_date ? new Date(visit.visit_date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      visitDate: visit.visit_date || null,
       type: visit.visit_type || 'Other',
       outcome: visit.outcome || 'Pending',
+      location: visit.hcp?.organisation || 'Location not set',
     }))
 
     setVisits(mappedVisits)
     setLoadingVisits(false)
-  }
+  }, [])
 
-  const loadMaterials = async () => {
+  const loadMaterials = useCallback(async () => {
     setLoadingMaterials(true)
-    const { data, error } = await materialQueries.getAllMaterials()
-    if (error) {
-      setActionMessage(`Failed to load materials: ${error}`)
+    const [materialsResult, foldersResult, flagsResult] = await Promise.all([
+      materialQueries.getAllMaterials(),
+      folderQueries.getFolders(),
+      complianceQueries.getFlags(),
+    ])
+
+    if (materialsResult.error) {
+      setActionMessage(`Failed to load materials: ${materialsResult.error}`)
       setMaterials([])
       setLoadingMaterials(false)
       return
     }
 
-    setMaterials(data || [])
+    setMaterials(materialsResult.data || [])
+    setFolders(foldersResult.data || [])
+    setFlaggedMaterialIds(new Set(
+      (flagsResult || [])
+        .filter((row) => (row.status || '').toLowerCase() !== 'resolved')
+        .map((row) => row.material_id)
+        .filter(Boolean)
+    ))
     setLoadingMaterials(false)
-  }
+  }, [])
 
-  const handlePlaceholderAction = (message = 'Action complete.') => {
-    setActionMessage(message)
+  const loadHCPs = useCallback(async () => {
+    const { data, error } = await hcpQueries.getAllHCPs()
+    if (error) {
+      setActionMessage(`Failed to load HCP contacts: ${error}`)
+      setHcpList([])
+      return
+    }
+
+    setHcpList(data || [])
+  }, [])
+
+  useEffect(() => {
+    loadTasks()
+    loadVisits()
+    loadMaterials()
+    loadHCPs()
+  }, [loadTasks, loadVisits, loadMaterials, loadHCPs])
+
+  const handleQuickAction = (actionId, setActiveTab) => {
+    if (actionId === 'new-log') {
+      setActiveTab('log-visit')
+      setActionMessage('Ready to log a new visit.')
+      return
+    }
+
+    if (actionId === 'schedule') {
+      setActiveTab('my-visits')
+      setIsScheduleFormOpen(true)
+      setActionMessage('Schedule a visit using the form below.')
+      return
+    }
+
+    if (actionId === 'order-samples') {
+      setActiveTab('materials')
+      setActionMessage('Materials library opened for approved assets.')
+      return
+    }
+
+    if (actionId === 'submit-report') {
+      setActiveTab('tasks')
+      setIsTaskFormOpen(true)
+      setActionMessage('Fill out the task form to create a follow-up.')
+    }
   }
 
   const handleVisitTopicToggle = (topic) => {
@@ -264,16 +407,48 @@ export default function LiaisonOfficer() {
   }
 
   const handleSaveVisit = async () => {
-    if (!visitForm.hcpName || !visitForm.dateOfVisit) {
+    const hcpName = visitForm.hcpName.trim()
+
+    if (!hcpName || !visitForm.dateOfVisit) {
       setActionMessage('Please provide HCP name and visit date.')
       return
     }
 
+    if (!visitForm.complianceConfirmed) {
+      setActionMessage('Please confirm that this interaction follows compliance rules before saving.')
+      return
+    }
+
+    let hcpId = visitForm.hcpId
+    if (!hcpId) {
+      const existing = hcpList.find((hcp) => (hcp.name || '').trim().toLowerCase() === hcpName.toLowerCase())
+      if (existing?.id) {
+        hcpId = existing.id
+      }
+    }
+
+    if (!hcpId) {
+      const { data, error } = await hcpQueries.createHCP({
+        name: hcpName,
+        organisation: 'Not specified',
+        location: 'Not specified',
+        active: true,
+      })
+
+      if (error || !data?.id) {
+        setActionMessage(`Failed to save visit log: unable to create HCP record. ${error || ''}`.trim())
+        return
+      }
+
+      hcpId = data.id
+      await loadHCPs()
+    }
+
     const payload = {
+      hcp_id: hcpId,
       visit_date: new Date(visitForm.dateOfVisit).toISOString(),
       visit_type: visitForm.topics[0] || 'Other',
       outcome: 'Pending',
-      location: 'Field Visit',
       notes: visitForm.notes || null,
       hcp_feedback: visitForm.notes || null,
     }
@@ -285,28 +460,150 @@ export default function LiaisonOfficer() {
     }
 
     setActionMessage('Visit log saved successfully.')
-    setVisitForm({ hcpName: '', dateOfVisit: '', durationMinutes: '', topics: [], notes: '' })
+    setVisitForm({ hcpId: '', hcpName: '', dateOfVisit: '', durationMinutes: '', topics: [], notes: '', complianceConfirmed: false })
     await loadVisits()
   }
 
   const handleCancelVisit = () => {
-    setVisitForm({ hcpName: '', dateOfVisit: '', durationMinutes: '', topics: [], notes: '' })
+    setVisitForm({ hcpId: '', hcpName: '', dateOfVisit: '', durationMinutes: '', topics: [], notes: '', complianceConfirmed: false })
     setActionMessage('Visit log form cleared.')
   }
 
-  const handleResolveTask = (taskId) => {
-    const run = async () => {
-      const { error } = await taskQueries.updateTaskStatus(taskId, 'Completed')
-      if (error) {
-        setActionMessage(`Failed to resolve task: ${error}`)
-        return
-      }
-
-      setActionMessage('Task marked as resolved.')
-      await loadTasks()
+  const handleScheduleVisitSubmit = async () => {
+    if (!scheduleForm.hcpId) {
+      setActionMessage('Please select a Healthcare Professional.')
+      return
+    }
+    if (!scheduleForm.visitDate) {
+      setActionMessage('Please set the visit date and time.')
+      return
     }
 
-    run()
+    setIsSavingSchedule(true)
+    const payload = {
+      hcp_id: scheduleForm.hcpId,
+      visit_date: new Date(scheduleForm.visitDate).toISOString(),
+      visit_type: scheduleForm.visitType || 'Other',
+      outcome: 'Pending',
+      notes: scheduleForm.notes.trim() || null,
+    }
+
+    const data = await visitQueries.logVisit(payload)
+    if (!data) {
+      setActionMessage('Failed to schedule visit. Please try again.')
+      setIsSavingSchedule(false)
+      return
+    }
+
+    setActionMessage('Visit scheduled successfully.')
+    setScheduleForm({ hcpId: '', visitDate: '', visitType: 'In-person', notes: '' })
+    setIsScheduleFormOpen(false)
+    await loadVisits()
+    setIsSavingSchedule(false)
+  }
+
+  const moveTaskToStatus = async (taskId, targetStatus) => {
+    const existing = taskList.find((task) => task.id === taskId)
+    if (!existing || existing.status === targetStatus) {
+      return
+    }
+
+    // Only allow update if current user is assignee or creator (by ID)
+    const { data: { user } } = await (await import('../../services/supabaseClient')).supabase.auth.getUser();
+    const currentUserId = user?.id;
+    if (
+      !currentUserId ||
+      (existing.assignedToId !== currentUserId && existing.createdById !== currentUserId)
+    ) {
+      setActionMessage('You do not have permission to update this task.');
+      return;
+    }
+
+    const { error } = await taskQueries.updateTaskStatus(taskId, targetStatus)
+    if (error) {
+      setActionMessage(`Task update failed: ${error}`)
+      return
+    }
+
+    setTaskList((prev) => prev.map((task) => (
+      task.id === taskId
+        ? { ...task, status: targetStatus }
+        : task
+    )))
+    setActionMessage(`Task moved to ${targetStatus}.`)
+  }
+
+  const resetTaskForm = () => {
+    setTaskForm({
+      title: '',
+      description: '',
+      dueDate: '',
+      priority: 'Medium',
+    })
+  }
+
+  const handleTaskFormSubmit = async () => {
+    const title = taskForm.title.trim()
+    if (!title) {
+      setActionMessage('Task title is required.')
+      return
+    }
+
+    setIsSavingTask(true)
+    const payload = {
+      title,
+      description: taskForm.description.trim() || 'Task details not provided.',
+      status: 'Open',
+      priority: taskForm.priority,
+      due_date: taskForm.dueDate || null,
+    }
+
+    const { error } = await taskQueries.createTask(payload)
+    if (error) {
+      setActionMessage(`Failed to create task: ${error}`)
+      setIsSavingTask(false)
+      return
+    }
+
+    setActionMessage('New task created.')
+    resetTaskForm()
+    setIsTaskFormOpen(false)
+    await loadTasks()
+    setIsSavingTask(false)
+  }
+
+  const openVisitUpdateForm = (visit) => {
+    if (!visit?.id) return
+    setVisitUpdateForm({
+      visitId: visit.id,
+      outcome: visit.outcome || 'Pending',
+      feedback: '',
+    })
+  }
+
+  const handleVisitUpdateSubmit = async () => {
+    if (!visitUpdateForm.visitId) {
+      setActionMessage('Select a visit to update first.')
+      return
+    }
+
+    setIsSavingVisitUpdate(true)
+    const result = await visitQueries.updateVisitOutcome(
+      visitUpdateForm.visitId,
+      visitUpdateForm.outcome,
+      visitUpdateForm.feedback.trim() || null
+    )
+
+    if (!result) {
+      setActionMessage('Failed to update visit outcome.')
+      setIsSavingVisitUpdate(false)
+      return
+    }
+
+    setActionMessage('Visit updated successfully.')
+    setVisitUpdateForm({ visitId: '', outcome: 'Pending', feedback: '' })
+    await loadVisits()
+    setIsSavingVisitUpdate(false)
   }
 
   const handlePriorityFilter = () => {
@@ -315,23 +612,160 @@ export default function LiaisonOfficer() {
     setActionMessage(`Task filter set to ${next}.`)
   }
 
+  const uniqueAssignees = useMemo(() => {
+    const names = taskList.map((task) => task.assignedTo).filter(Boolean)
+    return ['All', ...Array.from(new Set(names)).sort()]
+  }, [taskList])
+
   const visibleTasks = useMemo(() => {
-    const openTasks = taskList.filter((task) => task.status !== 'Completed')
-    const filteredByPriority = priorityFilter === 'All' ? openTasks : openTasks.filter((task) => task.priority === priorityFilter)
+    let result = priorityFilter === 'All' ? taskList : taskList.filter((task) => task.priority === priorityFilter)
+    if (assigneeFilter !== 'All') {
+      result = result.filter((task) => task.assignedTo === assigneeFilter)
+    }
     const normalizedSearch = taskSearch.trim().toLowerCase()
     if (!normalizedSearch) {
-      return filteredByPriority
+      return result
     }
-
-    return filteredByPriority.filter((task) => (
+    return result.filter((task) => (
       (task.title || '').toLowerCase().includes(normalizedSearch) ||
       (task.detail || '').toLowerCase().includes(normalizedSearch)
     ))
-  }, [taskList, priorityFilter, taskSearch])
+  }, [taskList, priorityFilter, assigneeFilter, taskSearch])
+
+  const visibleVisits = useMemo(() => {
+    if (visitOutcomeFilter === 'All') return visits
+    return visits.filter((visit) => (visit.outcome || '').toLowerCase() === visitOutcomeFilter.toLowerCase())
+  }, [visits, visitOutcomeFilter])
+
+  const handleTaskDragStart = (taskId) => {
+    setDraggedTaskId(taskId)
+  }
+
+  const handleTaskDragEnd = () => {
+    setDraggedTaskId(null)
+    setDropTargetStatus('')
+  }
+
+  const handleTaskDrop = async (targetStatus) => {
+    if (!draggedTaskId) {
+      setDropTargetStatus('')
+      return
+    }
+
+    const taskId = draggedTaskId
+    setDraggedTaskId(null)
+    setDropTargetStatus('')
+    await moveTaskToStatus(taskId, targetStatus)
+  }
+
+  const getColumnStatusFromPoint = (x, y) => {
+    const target = document.elementFromPoint(x, y)
+    const column = target?.closest?.('[data-task-column-status]')
+    return column?.getAttribute('data-task-column-status') || ''
+  }
+
+  const handleTaskTouchStart = (taskId) => {
+    setMobileDraggingTaskId(taskId)
+    setDraggedTaskId(taskId)
+  }
+
+  const handleTaskTouchMove = (event) => {
+    if (!mobileDraggingTaskId) {
+      return
+    }
+
+    const touch = event.touches?.[0]
+    if (!touch) {
+      return
+    }
+
+    const status = getColumnStatusFromPoint(touch.clientX, touch.clientY)
+    setDropTargetStatus(status)
+    event.preventDefault()
+  }
+
+  const handleTaskTouchEnd = async (event) => {
+    if (!mobileDraggingTaskId) {
+      setDropTargetStatus('')
+      return
+    }
+
+    const touch = event.changedTouches?.[0]
+    const touchStatus = touch ? getColumnStatusFromPoint(touch.clientX, touch.clientY) : ''
+    const targetStatus = touchStatus || dropTargetStatus
+    const taskId = mobileDraggingTaskId
+
+    setMobileDraggingTaskId(null)
+    setDraggedTaskId(null)
+    setDropTargetStatus('')
+
+    if (!targetStatus) {
+      setActionMessage('Drag the task over a kanban column, then release to move it.')
+      return
+    }
+
+    await moveTaskToStatus(taskId, targetStatus)
+  }
+
+  const dashboardSchedule = useMemo(() => {
+    const now = Date.now()
+    return visits
+      .filter((visit) => visit.visitDate)
+      .sort((a, b) => new Date(a.visitDate) - new Date(b.visitDate))
+      .filter((visit) => new Date(visit.visitDate).getTime() >= now - (24 * 60 * 60 * 1000))
+      .slice(0, 5)
+      .map((visit) => ({
+        id: visit.id,
+        time: visit.time,
+        location: visit.location,
+        detail: `${visit.hcp} • ${visit.type}`,
+        status: visit.outcome || 'Pending',
+      }))
+  }, [visits])
+
+  const dashboardMetrics = useMemo(() => {
+    const now = new Date()
+    const thisMonth = visits.filter((visit) => {
+      if (!visit.visitDate) return false
+      const d = new Date(visit.visitDate)
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    })
+
+    const totalVisits = thisMonth.length
+    const completedVisits = thisMonth.filter((visit) => {
+      const outcome = (visit.outcome || '').toLowerCase()
+      return outcome === 'closed' || outcome === 'completed'
+    }).length
+    const followUpsPending = thisMonth.filter((visit) => {
+      const outcome = (visit.outcome || '').toLowerCase()
+      return outcome.includes('pending') || outcome.includes('follow')
+    }).length
+    const conversionRate = totalVisits === 0 ? 0 : Math.round((completedVisits / totalVisits) * 100)
+    const progressTarget = 20
+    const progressPercent = Math.min(100, Math.round((totalVisits / progressTarget) * 100))
+    const monthProgress = now.getDate() / 30
+    const weeklyAverage = Math.round(totalVisits / Math.max(monthProgress * 4, 1))
+    const completionScore = totalVisits === 0 ? 0 : (completedVisits / totalVisits) * 10
+
+    return {
+      totalVisits,
+      progressTarget,
+      progressPercent,
+      conversionRate,
+      followUpsPending,
+      weeklyAverage,
+      qualityScore: completionScore.toFixed(1),
+    }
+  }, [visits])
+
+  const approvedMaterials = useMemo(
+    () => materials.filter((row) => String(row.status || '').toLowerCase() === 'approved'),
+    [materials]
+  )
 
   const visibleMaterials = useMemo(() => {
     const q = materialSearch.trim().toLowerCase()
-    return materials.filter((row) => {
+    return approvedMaterials.filter((row) => {
       const type = (row.file_type || '').toLowerCase()
       const campaignName = (row.campaign?.name || '').toLowerCase()
       const status = (row.status || '').toLowerCase()
@@ -353,68 +787,35 @@ export default function LiaisonOfficer() {
         (materialCampaignFilter === 'unassigned' && !campaignName) ||
         campaignName === materialCampaignFilter.toLowerCase()
 
-      return matchesSearch && matchesType && matchesCampaign
+      const matchesFolder = materialFolderFilter === 'all' ||
+        (materialFolderFilter === 'unassigned' && !row.folder?.id) ||
+        row.folder?.id === materialFolderFilter
+
+      return matchesSearch && matchesType && matchesCampaign && matchesFolder
     })
-  }, [materials, materialSearch, materialTypeFilter, materialCampaignFilter])
+  }, [approvedMaterials, materialSearch, materialTypeFilter, materialCampaignFilter, materialFolderFilter])
 
   const campaignNames = useMemo(() => {
-    return Array.from(new Set(materials.map((item) => item.campaign?.name).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+    return Array.from(new Set(approvedMaterials.map((item) => item.campaign?.name).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  }, [approvedMaterials])
+
+  const uploadCampaigns = useMemo(() => {
+    const byId = new Map()
+    materials.forEach((item) => {
+      if (item.campaign?.id && item.campaign?.name && !byId.has(item.campaign.id)) {
+        byId.set(item.campaign.id, { id: item.campaign.id, name: item.campaign.name })
+      }
+    })
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name))
   }, [materials])
 
-  const handleCreateTask = () => {
-    const run = async () => {
-      const now = new Date()
-      const dueDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-      const { error } = await taskQueries.createTask({
-        title: `Follow-up Task ${Math.floor(Math.random() * 1000)}`,
-        description: 'Created from Liaison Officer dashboard',
-        status: 'Open',
-        priority: 'Medium',
-        due_date: dueDate,
-      })
-
-      if (error) {
-        setActionMessage(`Failed to create task: ${error}`)
-        return
-      }
-
-      setActionMessage('New task created.')
-      await loadTasks()
+  const visibleFolders = useMemo(() => {
+    if (materialCampaignFilter === 'all' || materialCampaignFilter === 'unassigned') {
+      return folders
     }
-
-    run()
-  }
-
-  const handleUploadClick = () => {
-    uploadInputRef.current?.click()
-  }
-
-  const handleMaterialFileSelected = async (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setIsUploading(true)
-    setActionMessage('Uploading material...')
-
-    const { error } = await materialQueries.submitMaterial(
-      null,
-      {
-        name: file.name,
-        description: 'Uploaded from Liaison Officer dashboard',
-      },
-      file
-    )
-
-    if (error) {
-      setActionMessage(`Upload failed: ${error}`)
-    } else {
-      setActionMessage(`${file.name} uploaded successfully.`)
-      await loadMaterials()
-    }
-
-    setIsUploading(false)
-    event.target.value = ''
-  }
+    const campaign = materials.find((item) => item.campaign?.name === materialCampaignFilter)?.campaign
+    return folders.filter((folder) => folder.campaign_id === campaign?.id)
+  }, [folders, materialCampaignFilter, materials])
 
   const handleReplaceMaterialClick = (material) => {
     setMaterialToReplace(material)
@@ -448,50 +849,87 @@ export default function LiaisonOfficer() {
     await loadMaterials()
   }
 
+  const openMaterialDetails = async (material) => {
+    setSelectedMaterial(material)
+    setLoadingMaterialVersions(true)
+
+    const { data, error } = await materialQueries.getMaterialVersions(material.id)
+    if (error) {
+      setActionMessage(`Version history unavailable: ${error}`)
+      setMaterialVersions([])
+      setLoadingMaterialVersions(false)
+      return
+    }
+
+    setMaterialVersions(data || [])
+    setLoadingMaterialVersions(false)
+  }
+
+  const handleDownloadMaterialVersion = async (version) => {
+    if (!version) return
+
+    setDownloadingVersionId(version.id)
+    const { data, error } = await materialQueries.getMaterialVersionDownloadUrl(version)
+    if (error) {
+      setActionMessage(error)
+      setDownloadingVersionId(null)
+      return
+    }
+
+    window.open(data.url, '_blank', 'noopener,noreferrer')
+    setDownloadingVersionId(null)
+  }
+
   const handleFlagMaterial = async (material) => {
     if (!material?.id) {
       setActionMessage('Cannot flag this item: missing material id.')
       return
     }
 
-    const reasonInput = window.prompt('Why are you flagging this material for compliance review?', `Manual compliance flag for ${material.name || material.id}`)
-    if (reasonInput === null) {
-      return
+    setFlaggingMaterial(material)
+  }
+
+  const submitFlagForMaterial = async ({ reason, severity, details }) => {
+    if (!flaggingMaterial?.id) {
+      return { error: 'No material selected.' }
     }
 
-    const reason = reasonInput.trim()
-    if (!reason) {
-      setActionMessage('Flag cancelled: reason is required.')
-      return
-    }
-
-    const severityInput = (window.prompt('Flag severity (Low, Medium, High, Critical)', 'Medium') || 'Medium').trim()
-    const normalizedSeverity = severityInput.charAt(0).toUpperCase() + severityInput.slice(1).toLowerCase()
-    const severity = ['Low', 'Medium', 'High', 'Critical'].includes(normalizedSeverity) ? normalizedSeverity : 'Medium'
+    const normalizedSeverity = (severity || 'Medium').trim()
 
     const { error } = await complianceQueries.createFlag({
-      material_id: material.id,
-      reason,
-      severity,
+      material_id: flaggingMaterial.id,
+      reason: details ? `${reason}\n\nDetails: ${details}` : reason,
+      severity: ['Low', 'Medium', 'High', 'Critical'].includes(normalizedSeverity) ? normalizedSeverity : 'Medium',
       status: 'Open',
     })
 
     if (error) {
-      setActionMessage(`Failed to flag material: ${error}`)
-      return
+      return { error }
     }
 
     setFlaggedMaterialIds((prev) => {
       const next = new Set(prev)
-      next.add(material.id)
+      next.add(flaggingMaterial.id)
       return next
     })
-    setActionMessage(`Material ${material.name || material.id} flagged for compliance review.`)
+    setActionMessage(`Material ${flaggingMaterial.name || flaggingMaterial.id} flagged for compliance review.`)
+    setFlaggingMaterial(null)
+    await loadMaterials()
+    return { error: null }
   }
 
   return (
-    <DashboardTemplate title="Liaison Officer Portal" tabs={TABS}>
-      {(activeTab) => {
+    <>
+      <DashboardTemplate
+        title="Liaison Officer Portal"
+        tabs={TABS}
+        roleName="Liaison Officer Workspace"
+        roleSummary="This workspace links visit logging, task execution, and approved materials so field activity is easy to track and understand."
+        roleCapabilities={WORKSPACE_CAPABILITIES}
+        pageIntents={PAGE_INTENTS}
+        globalActions={WORKFLOW_ACTIONS}
+      >
+      {(activeTab, setActiveTab) => {
         switch (activeTab) {
           case 'dashboard':
             return (
@@ -511,7 +949,7 @@ export default function LiaisonOfficer() {
                         type="button"
                         key={action.id}
                         className={styles.quickActionCard}
-                        onClick={() => handlePlaceholderAction(`${action.label} opened.`)}
+                        onClick={() => handleQuickAction(action.id, setActiveTab)}
                       >
                         <div className={styles.quickActionIcon}>
                           <Icon size={24} />
@@ -529,13 +967,13 @@ export default function LiaisonOfficer() {
                       <button
                         type="button"
                         className={styles.linkButton}
-                        onClick={() => handlePlaceholderAction('Opened full daily schedule.')}
+                        onClick={() => setActiveTab('my-visits')}
                       >
                         View All
                       </button>
                     </div>
                     <div className={styles.scheduleList}>
-                      {SCHEDULE.map((item) => (
+                      {dashboardSchedule.map((item) => (
                         <div key={item.id} className={styles.scheduleItem}>
                           <span className={styles.scheduleTime}>{item.time}</span>
                           <div className={styles.scheduleInfo}>
@@ -547,6 +985,9 @@ export default function LiaisonOfficer() {
                           </span>
                         </div>
                       ))}
+                      {!loadingVisits && dashboardSchedule.length === 0 && (
+                        <p className={styles.rowMeta}>No upcoming visits yet. Log a visit to populate your schedule.</p>
+                      )}
                     </div>
                   </section>
 
@@ -555,38 +996,38 @@ export default function LiaisonOfficer() {
                     <div className={styles.metricRow}>
                       <div className={styles.metricLabelRow}>
                         <span>Total Visits</span>
-                        <span>42 / 60</span>
+                        <span>{dashboardMetrics.totalVisits} / {dashboardMetrics.progressTarget}</span>
                       </div>
                       <div className={styles.metricTrack}>
-                        <div className={styles.metricFill} style={{ width: '70%' }}></div>
+                        <div className={styles.metricFill} style={{ width: `${dashboardMetrics.progressPercent}%` }}></div>
                       </div>
                     </div>
                     <div className={styles.metricRow}>
                       <div className={styles.metricLabelRow}>
                         <span>Conversion Rate</span>
-                        <span>18%</span>
+                        <span>{dashboardMetrics.conversionRate}%</span>
                       </div>
                       <div className={styles.metricTrack}>
-                        <div className={styles.metricFill} style={{ width: '18%' }}></div>
+                        <div className={styles.metricFill} style={{ width: `${dashboardMetrics.conversionRate}%` }}></div>
                       </div>
                     </div>
                     <div className={styles.metricRow}>
                       <div className={styles.metricLabelRow}>
                         <span>Follow-Ups Pending</span>
-                        <span>12</span>
+                        <span>{dashboardMetrics.followUpsPending}</span>
                       </div>
                       <div className={styles.metricTrack}>
-                        <div className={styles.metricFill} style={{ width: '45%' }}></div>
+                        <div className={styles.metricFill} style={{ width: `${Math.min(100, dashboardMetrics.followUpsPending * 10)}%` }}></div>
                       </div>
                     </div>
 
                     <div className={styles.metricsFoot}>
                       <div>
-                        <strong>14</strong>
+                        <strong>{dashboardMetrics.weeklyAverage}</strong>
                         <span>Avg Visits / Week</span>
                       </div>
                       <div>
-                        <strong>8.5</strong>
+                        <strong>{dashboardMetrics.qualityScore}</strong>
                         <span>Quality Score</span>
                       </div>
                     </div>
@@ -610,9 +1051,19 @@ export default function LiaisonOfficer() {
                     type="text"
                     className={styles.input}
                     placeholder="Search or enter name..."
+                    list="liaison-hcp-options"
                     value={visitForm.hcpName}
-                    onChange={(e) => setVisitForm((prev) => ({ ...prev, hcpName: e.target.value }))}
+                    onChange={(e) => {
+                      const nextName = e.target.value
+                      const matchedHcp = hcpList.find((hcp) => (hcp.name || '').trim().toLowerCase() === nextName.trim().toLowerCase())
+                      setVisitForm((prev) => ({ ...prev, hcpName: nextName, hcpId: matchedHcp?.id || '' }))
+                    }}
                   />
+                  <datalist id="liaison-hcp-options">
+                    {hcpList.map((hcp) => (
+                      <option key={hcp.id} value={hcp.name} />
+                    ))}
+                  </datalist>
 
                   <div className={styles.inlineFields}>
                     <div>
@@ -653,6 +1104,15 @@ export default function LiaisonOfficer() {
                     onChange={(e) => setVisitForm((prev) => ({ ...prev, notes: e.target.value }))}
                   ></textarea>
 
+                  <label className={styles.fieldLabel}>
+                    <input
+                      type="checkbox"
+                      checked={visitForm.complianceConfirmed}
+                      onChange={(e) => setVisitForm((prev) => ({ ...prev, complianceConfirmed: e.target.checked }))}
+                    />
+                    {' '}I confirm this interaction followed approved materials and compliance guidance.
+                  </label>
+
                   <div className={styles.formActions}>
                     <button type="button" className={styles.primaryBtn} onClick={handleSaveVisit}>
                       Save Visit Log
@@ -669,40 +1129,207 @@ export default function LiaisonOfficer() {
             return (
               <div className={styles.tabContent}>
                 {actionMessage && <p className={styles.rowMeta}>{actionMessage}</p>}
-                <div className={styles.pageHeader}>
-                  <h1>My Visits</h1>
-                  <p>Recent field visits and interaction outcomes.</p>
+                <div className={styles.pageHeaderRow}>
+                  <div>
+                    <h1>My Visits</h1>
+                    <p>Field visits, schedules, and interaction outcomes.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.primaryBtn}
+                    onClick={() => setIsScheduleFormOpen((prev) => !prev)}
+                  >
+                    {isScheduleFormOpen ? 'Close Schedule Form' : '+ Schedule Visit'}
+                  </button>
                 </div>
 
+                {isScheduleFormOpen && (
+                  <div className={styles.inlineFormCard}>
+                    <h3>Schedule a New Visit</h3>
+                    <div className={styles.inlineFields}>
+                      <div>
+                        <label className={styles.fieldLabel}>Healthcare Professional</label>
+                        <select
+                          className={styles.input}
+                          value={scheduleForm.hcpId}
+                          onChange={(e) => setScheduleForm((prev) => ({ ...prev, hcpId: e.target.value }))}
+                        >
+                          <option value="">Select HCP...</option>
+                          {hcpList.map((hcp) => (
+                            <option key={hcp.id} value={hcp.id}>
+                              {hcp.name}{hcp.organisation ? ` — ${hcp.organisation}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {hcpList.length === 0 && (
+                          <small className={styles.rowMeta}>No HCP contacts found. Add contacts via the Admin panel first.</small>
+                        )}
+                      </div>
+                      <div>
+                        <label className={styles.fieldLabel}>Visit Date &amp; Time</label>
+                        <input
+                          type="datetime-local"
+                          className={styles.input}
+                          value={scheduleForm.visitDate}
+                          onChange={(e) => setScheduleForm((prev) => ({ ...prev, visitDate: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className={styles.inlineFields}>
+                      <div>
+                        <label className={styles.fieldLabel}>Visit Type</label>
+                        <select
+                          className={styles.input}
+                          value={scheduleForm.visitType}
+                          onChange={(e) => setScheduleForm((prev) => ({ ...prev, visitType: e.target.value }))}
+                        >
+                          <option value="In-person">In-person</option>
+                          <option value="Virtual">Virtual</option>
+                          <option value="Phone">Phone</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                    <label className={styles.fieldLabel}>Notes (optional)</label>
+                    <textarea
+                      className={styles.textarea}
+                      value={scheduleForm.notes}
+                      placeholder="Preparation notes, talking points, or reminders for this visit..."
+                      onChange={(e) => setScheduleForm((prev) => ({ ...prev, notes: e.target.value }))}
+                    ></textarea>
+                    <div className={styles.formActions}>
+                      <button
+                        type="button"
+                        className={styles.primaryBtn}
+                        disabled={isSavingSchedule}
+                        onClick={handleScheduleVisitSubmit}
+                      >
+                        {isSavingSchedule ? 'Saving...' : 'Schedule Visit'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={() => {
+                          setScheduleForm({ hcpId: '', visitDate: '', visitType: 'In-person', notes: '' })
+                          setIsScheduleFormOpen(false)
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className={styles.tableCard}>
-                  <table className={styles.dataTable}>
-                    <thead>
-                      <tr>
-                        <th>HCP</th>
-                        <th>Organisation</th>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Outcome</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visits.map((visit) => (
-                        <tr key={visit.id}>
-                          <td>{visit.hcp}</td>
-                          <td>{visit.organisation}</td>
-                          <td>{visit.date}</td>
-                          <td>{visit.type}</td>
-                          <td>{visit.outcome}</td>
-                        </tr>
-                      ))}
-                      {!loadingVisits && visits.length === 0 && (
+                  <div className={styles.visitsToolbar}>
+                    <label className={styles.fieldLabel}>
+                      Outcome Filter
+                      <select
+                        className={styles.input}
+                        value={visitOutcomeFilter}
+                        onChange={(e) => setVisitOutcomeFilter(e.target.value)}
+                      >
+                        <option value="All">All</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Follow-up Required">Follow-up Required</option>
+                        <option value="Closed">Closed</option>
+                        <option value="Escalated">Escalated</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className={styles.responsiveTableWrapper}>
+                    <table className={styles.dataTable}>
+                      <thead>
                         <tr>
-                          <td colSpan={5}>No visits logged yet.</td>
+                          <th>HCP</th>
+                          <th>Organisation</th>
+                          <th>Date</th>
+                          <th>Type</th>
+                          <th>Outcome</th>
+                          <th>Actions</th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {visibleVisits.map((visit) => (
+                          <tr key={visit.id}>
+                            <td>{visit.hcp}</td>
+                            <td>{visit.organisation}</td>
+                            <td>{visit.date}</td>
+                            <td>{visit.type}</td>
+                            <td>{visit.outcome}</td>
+                            <td>
+                              <div className={styles.visitActions}>
+                                <button type="button" className={styles.smallBtn} onClick={() => openVisitUpdateForm(visit)}>Update</button>
+                                <button
+                                  type="button"
+                                  className={styles.smallBtn}
+                                  onClick={() => {
+                                    setTaskForm({
+                                      title: `Follow-up: ${visit.hcp}`,
+                                      description: `Follow-up visit from ${visit.date} (${visit.type}).`,
+                                      dueDate: '',
+                                      priority: 'Medium',
+                                    })
+                                    setIsTaskFormOpen(true)
+                                    setActiveTab('tasks')
+                                    setActionMessage('Task form prefilled from selected visit.')
+                                  }}
+                                >
+                                  Create Follow-Up
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {!loadingVisits && visibleVisits.length === 0 && (
+                          <tr>
+                            <td colSpan={6}>No visits found for the selected filter.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+
+                {visitUpdateForm.visitId && (
+                  <div className={styles.inlineFormCard}>
+                    <h3>Update Visit Outcome</h3>
+                    <div className={styles.inlineFields}>
+                      <div>
+                        <label className={styles.fieldLabel}>Outcome</label>
+                        <select
+                          className={styles.input}
+                          value={visitUpdateForm.outcome}
+                          onChange={(e) => setVisitUpdateForm((prev) => ({ ...prev, outcome: e.target.value }))}
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Follow-up Required">Follow-up Required</option>
+                          <option value="Closed">Closed</option>
+                          <option value="Escalated">Escalated</option>
+                        </select>
+                      </div>
+                    </div>
+                    <label className={styles.fieldLabel}>Feedback / Notes</label>
+                    <textarea
+                      className={styles.textarea}
+                      value={visitUpdateForm.feedback}
+                      placeholder="Add optional feedback for this visit update..."
+                      onChange={(e) => setVisitUpdateForm((prev) => ({ ...prev, feedback: e.target.value }))}
+                    ></textarea>
+                    <div className={styles.formActions}>
+                      <button type="button" className={styles.primaryBtn} disabled={isSavingVisitUpdate} onClick={handleVisitUpdateSubmit}>
+                        {isSavingVisitUpdate ? 'Saving...' : 'Save Update'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={() => setVisitUpdateForm({ visitId: '', outcome: 'Pending', feedback: '' })}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )
 
@@ -720,229 +1347,354 @@ export default function LiaisonOfficer() {
                 <div className={styles.tasksToolbar}>
                   <input className={styles.search} placeholder="Search tasks" value={taskSearch} onChange={(e) => setTaskSearch(e.target.value)} />
                   <div className={styles.toolbarActions}>
-                    <button type="button" className={styles.secondaryBtn} onClick={handlePriorityFilter}>Filter by Priority ({priorityFilter})</button>
-                    <button type="button" className={styles.primaryBtn} onClick={handleCreateTask}>+ New Task</button>
+                    <label className={styles.fieldLabel} style={{ margin: 0 }}>
+                      Assigned To
+                      <select
+                        className={styles.input}
+                        value={assigneeFilter}
+                        onChange={(e) => setAssigneeFilter(e.target.value)}
+                      >
+                        {uniqueAssignees.map((name) => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button type="button" className={styles.secondaryBtn} onClick={handlePriorityFilter}>Priority: {priorityFilter}</button>
+                    <button type="button" className={styles.primaryBtn} onClick={() => setIsTaskFormOpen((prev) => !prev)}>
+                      {isTaskFormOpen ? 'Close Task Form' : '+ New Task'}
+                    </button>
                   </div>
                 </div>
 
-                <div className={styles.tableCard}>
-                  <table className={styles.dataTable}>
-                    <thead>
-                      <tr>
-                        <th>Prio</th>
-                        <th>Follow-Up Task Details</th>
-                        <th>Related Visit</th>
-                        <th>Due Date</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleTasks.map((task) => (
-                        <tr key={task.id}>
-                          <td>
-                            <span className={`${styles.priorityDot} ${styles[task.priority.toLowerCase()]}`}></span>
-                          </td>
-                          <td>
-                            <strong>{task.title}</strong>
-                            <p className={styles.rowMeta}>{task.detail}</p>
-                          </td>
-                          <td>{task.location}</td>
-                          <td>{task.due}</td>
-                          <td>
-                            <button type="button" className={styles.smallBtn} onClick={() => handleResolveTask(task.id)}>Resolve</button>
-                          </td>
-                        </tr>
-                      ))}
-                      {!loadingTasks && visibleTasks.length === 0 && (
-                        <tr>
-                          <td colSpan={5}>No open tasks found.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                {isTaskFormOpen && (
+                  <div className={styles.inlineFormCard}>
+                    <h3>Create New Follow-Up Task</h3>
+                    <div className={styles.inlineFields}>
+                      <div>
+                        <label className={styles.fieldLabel}>Task Title</label>
+                        <input
+                          type="text"
+                          className={styles.input}
+                          value={taskForm.title}
+                          placeholder="Enter task title"
+                          onChange={(e) => setTaskForm((prev) => ({ ...prev, title: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className={styles.fieldLabel}>Due Date</label>
+                        <input
+                          type="date"
+                          className={styles.input}
+                          value={taskForm.dueDate}
+                          onChange={(e) => setTaskForm((prev) => ({ ...prev, dueDate: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className={styles.inlineFields}>
+                      <div>
+                        <label className={styles.fieldLabel}>Priority</label>
+                        <select
+                          className={styles.input}
+                          value={taskForm.priority}
+                          onChange={(e) => setTaskForm((prev) => ({ ...prev, priority: e.target.value }))}
+                        >
+                          <option value="High">High</option>
+                          <option value="Medium">Medium</option>
+                          <option value="Low">Low</option>
+                        </select>
+                      </div>
+                    </div>
+                    <label className={styles.fieldLabel}>Description</label>
+                    <textarea
+                      className={styles.textarea}
+                      value={taskForm.description}
+                      placeholder="Describe required follow-up actions..."
+                      onChange={(e) => setTaskForm((prev) => ({ ...prev, description: e.target.value }))}
+                    ></textarea>
+                    <div className={styles.formActions}>
+                      <button type="button" className={styles.primaryBtn} disabled={isSavingTask} onClick={handleTaskFormSubmit}>
+                        {isSavingTask ? 'Saving...' : 'Create Task'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={() => {
+                          resetTaskForm()
+                          setIsTaskFormOpen(false)
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className={styles.taskBoard}>
+                  {TASK_COLUMNS.map((column) => {
+                    const columnTasks = visibleTasks.filter((task) => (task.status || 'Open') === column.id)
+                    const isDropActive = dropTargetStatus === column.id
+                    return (
+                      <div
+                        key={column.id}
+                        className={`${styles.taskColumn} ${isDropActive ? styles.taskColumnDropActive : ''}`}
+                        data-task-column-status={column.id}
+                        onDragOver={(event) => {
+                          event.preventDefault()
+                          setDropTargetStatus(column.id)
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault()
+                          handleTaskDrop(column.id)
+                        }}
+                        onDragLeave={() => setDropTargetStatus((current) => (current === column.id ? '' : current))}
+                      >
+                        <h3>{column.label}</h3>
+                        {columnTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className={`${styles.taskCard} ${(task.status || 'Open') === 'Completed' ? styles.completed : ''} ${draggedTaskId === task.id ? styles.taskCardDragging : ''}`}
+                            draggable
+                            onDragStart={() => handleTaskDragStart(task.id)}
+                            onDragEnd={handleTaskDragEnd}
+                            onTouchStart={(e) => { e.preventDefault && e.preventDefault(); handleTaskTouchStart(task.id); }}
+                            onTouchMove={(e) => { e.preventDefault && e.preventDefault(); handleTaskTouchMove(e); }}
+                            onTouchEnd={(e) => { e.preventDefault && e.preventDefault(); handleTaskTouchEnd(e); }}
+                            onTouchCancel={(e) => { e.preventDefault && e.preventDefault(); handleTaskDragEnd(e); }}
+                            style={{ position: 'relative' }}
+                          >
+                            <div className={styles.taskCardHeader}>
+                              <p>{task.title}</p>
+                              {/* Move bin icon left of priorityDot for better alignment */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <button
+                                  type="button"
+                                  aria-label="Delete task"
+                                  className={styles.binIconBtn}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteConfirmTaskId(task.id);
+                                  }}
+                                  disabled={isDeletingTask}
+                                >
+                                  <span className="glyphicon" style={{ color: '#dc2626', fontSize: 15 }}>&#xe020;</span>
+                                </button>
+                                <span className={`${styles.priorityDot} ${styles[task.priority.toLowerCase()]}`}></span>
+                              </div>
+                            </div>
+                            <small>{task.detail}</small>
+                            <small>Due: {task.due}</small>
+                            {/* Confirm popup */}
+                            {deleteConfirmTaskId === task.id && (
+                              <div style={{
+                                position: 'absolute',
+                                top: 32,
+                                right: 8,
+                                background: '#fff',
+                                border: '1px solid #dc2626',
+                                borderRadius: 6,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                                padding: '12px 16px',
+                                zIndex: 10,
+                                minWidth: 180,
+                              }}>
+                                <div style={{ marginBottom: 8, color: '#dc2626', fontWeight: 600 }}>Delete this task?</div>
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                  <button
+                                    type="button"
+                                    style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', cursor: 'pointer' }}
+                                    onClick={() => handleDeleteTask(task.id)}
+                                    disabled={isDeletingTask}
+                                  >
+                                    {isDeletingTask ? 'Deleting...' : 'Delete'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    style={{ background: '#f3f4f6', color: '#222', border: 'none', borderRadius: 4, padding: '4px 12px', cursor: 'pointer' }}
+                                    onClick={() => setDeleteConfirmTaskId(null)}
+                                    disabled={isDeletingTask}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                              <Avatar name={task.assignedTo} src={task.assignedToAvatar} size="sm" />
+                              <small>Assigned to: {task.assignedTo}</small>
+                            </div>
+                            {task.assignedBy !== task.assignedTo && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                                <Avatar name={task.assignedBy} src={task.assignedByAvatar} size="sm" />
+                                <small>Assigned by: {task.assignedBy}</small>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {!loadingTasks && columnTasks.length === 0 && (
+                          <p className={styles.rowMeta}>No tasks in this column.</p>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )
 
           case 'materials':
             return (
-              <div className={styles.tabContent}>
-                {actionMessage && <p className={styles.rowMeta}>{actionMessage}</p>}
-                <input
-                  ref={uploadInputRef}
-                  type="file"
-                  hidden
-                  onChange={handleMaterialFileSelected}
-                />
-                <input
-                  ref={replaceMaterialInputRef}
-                  type="file"
-                  hidden
-                  onChange={handleReplaceMaterialSelected}
-                />
-
-                <div className={campaignStyles.pageHeaderRow}>
-                  <div>
-                    <h1>Materials Library</h1>
-                    <p>Manage and organise your campaign assets. {materials.length} total.</p>
-                  </div>
-                  <button type="button" className={campaignStyles.primaryBtn} onClick={handleUploadClick} disabled={isUploading}>
-                    <PlusIcon size={16} /> {isUploading ? 'Uploading...' : 'Upload Material'}
-                  </button>
-                </div>
-
-                <div className={campaignStyles.toolbar}>
-                  <input
-                    className={campaignStyles.searchInput}
-                    placeholder="Search materials by name, type or status..."
-                    value={materialSearch}
-                    onChange={(e) => setMaterialSearch(e.target.value)}
-                  />
-                  <select
-                    className={campaignStyles.filterSelect}
-                    value={materialCampaignFilter}
-                    onChange={(e) => setMaterialCampaignFilter(e.target.value)}
-                  >
-                    <option value="all">All Campaigns</option>
-                    <option value="unassigned">Unassigned</option>
-                    {campaignNames.map((name) => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={campaignStyles.materialTabs}>
-                  {[
-                    { id: 'all', label: 'All Assets' },
-                    { id: 'pdf', label: 'PDFs' },
-                    { id: 'video', label: 'Videos' },
-                    { id: 'image', label: 'Images' },
-                    { id: 'ppt', label: 'Presentations' },
-                    { id: 'other', label: 'Other' },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      className={`${campaignStyles.tabPill} ${materialTypeFilter === tab.id ? campaignStyles.activePill : ''}`}
-                      onClick={() => setMaterialTypeFilter(tab.id)}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className={campaignStyles.materialsGrid}>
-                  {visibleMaterials.map((material) => {
-                    const Icon = getFileIcon(material.file_type)
-                    const isFlagged = flaggedMaterialIds.has(material.id)
-
-                    return (
-                      <div className={campaignStyles.materialCard} key={material.id}>
-                        <div className={campaignStyles.materialIcon}><Icon size={32} /></div>
-                        <button
-                          type="button"
-                          className={`${campaignStyles.flagIconBtn} ${campaignStyles.cardFlagTopRight} ${isFlagged ? campaignStyles.flagIconBtnActive : ''}`}
-                          onClick={() => handleFlagMaterial(material)}
-                          title={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                          aria-label={isFlagged ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                        >
-                          <FlagIcon size={16} active={isFlagged} />
-                        </button>
-                        <h4>{material.name || 'Untitled'}</h4>
-                        <p>{(material.file_type || 'File').toUpperCase()} • {material.status || 'Submitted'}</p>
-                        <p className={campaignStyles.rowMeta}>{material.campaign?.name ? `Campaign: ${material.campaign.name}` : 'Unassigned'}</p>
-                        <p className={campaignStyles.rowMeta}>Updated {material.updated_at ? new Date(material.updated_at).toLocaleString('en-GB') : 'N/A'}</p>
-                        <p className={campaignStyles.rowMeta}>Last edited by {getMaterialEditorName(material)}</p>
-                        <div className={campaignStyles.materialCardActions}>
-                          <button
-                            type="button"
-                            className={campaignStyles.linkBtn}
-                            onClick={() => setSelectedMaterial(material)}
-                          >
-                            Details
-                          </button>
-                          <button
-                            type="button"
-                            className={campaignStyles.linkBtn}
-                            onClick={() => handleReplaceMaterialClick(material)}
-                            disabled={isReplacingMaterial}
-                          >
-                            {isReplacingMaterial && materialToReplace?.id === material.id ? 'Updating…' : 'Replace'}
-                          </button>
-                          <button
-                            type="button"
-                            className={campaignStyles.linkBtn}
-                            disabled={(material.status || '').toLowerCase() !== 'approved'}
-                            title={(material.status || '').toLowerCase() !== 'approved' ? 'Only approved materials can be downloaded' : 'Download file'}
-                            onClick={async () => {
-                              const { data, error } = await materialQueries.getApprovedMaterialDownloadUrl(material)
-                              if (error) {
-                                setActionMessage(error)
-                                return
-                              }
-                              window.open(data.url, '_blank', 'noopener,noreferrer')
-                            }}
-                          >
-                            Download
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {!loadingMaterials && visibleMaterials.length === 0 && (
-                    <p className={campaignStyles.rowMeta}>No materials found.</p>
-                  )}
-                  {loadingMaterials && <p className={campaignStyles.rowMeta}>Loading materials...</p>}
-                </div>
-
-                {selectedMaterial && (
-                  <div className={campaignStyles.modalBackdrop} onClick={() => setSelectedMaterial(null)}>
-                    <div className={campaignStyles.modalCard} onClick={(e) => e.stopPropagation()}>
-                      <div className={campaignStyles.cardHeader}>
-                        <h3>{selectedMaterial.name || 'Material details'}</h3>
-                        <button type="button" className={campaignStyles.pageBtn} onClick={() => setSelectedMaterial(null)}>Close</button>
-                      </div>
-                      <p className={campaignStyles.rowMeta}>ID: {selectedMaterial.id}</p>
-                      <p className={campaignStyles.rowMeta}>Status: <strong>{selectedMaterial.status || 'Unknown'}</strong></p>
-                      <p className={campaignStyles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
-                      <p className={campaignStyles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
-                      <div className={campaignStyles.materialCardActions}>
-                        <button
-                          type="button"
-                          className={`${campaignStyles.flagIconBtn} ${flaggedMaterialIds.has(selectedMaterial.id) ? campaignStyles.flagIconBtnActive : ''}`}
-                          onClick={() => handleFlagMaterial(selectedMaterial)}
-                          title={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                          aria-label={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
-                        >
-                          <FlagIcon size={16} active={flaggedMaterialIds.has(selectedMaterial.id)} />
-                        </button>
-                      </div>
-                      <h4 style={{ margin: '12px 0 6px' }}>Timeline</h4>
-                      <div className={campaignStyles.timelineList}>
-                        {buildMaterialTimeline(selectedMaterial).map((entry) => (
-                          <div key={entry.id} className={campaignStyles.timelineItem}>
-                            <span className={campaignStyles.timelineDot}></span>
-                            <div>
-                              <strong>{entry.label}</strong>
-                              <p className={campaignStyles.rowMeta}>By {entry.by}</p>
-                              <p className={campaignStyles.rowMeta}>{new Date(entry.at).toLocaleString('en-GB')}</p>
-                            </div>
-                          </div>
-                        ))}
-                        {buildMaterialTimeline(selectedMaterial).length === 0 && (
-                          <p className={campaignStyles.rowMeta}>No timeline events available.</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <MaterialsLibrary
+                tabClassName={styles.tabContent}
+                actionMessage={actionMessage}
+                actionMessageClassName={styles.rowMeta}
+                uploadInputRef={replaceMaterialInputRef /* use as dummy, disables upload */}
+                onUploadChange={() => {}}
+                replaceInputRef={replaceMaterialInputRef}
+                onReplaceChange={handleReplaceMaterialSelected}
+                uploadButtonLabel="Upload Material"
+                isUploading={isUploading}
+                materials={approvedMaterials}
+                visibleMaterials={visibleMaterials}
+                loading={loadingMaterials}
+                materialSearch={materialSearch}
+                onMaterialSearchChange={setMaterialSearch}
+                materialCampaignFilter={materialCampaignFilter}
+                onMaterialCampaignFilterChange={setMaterialCampaignFilter}
+                campaignNames={campaignNames}
+                materialFolderFilter={materialFolderFilter}
+                onMaterialFolderFilterChange={setMaterialFolderFilter}
+                visibleFolders={visibleFolders}
+                materialTypeFilter={materialTypeFilter}
+                onMaterialTypeFilterChange={setMaterialTypeFilter}
+                getFileIcon={getFileIcon}
+                flaggedMaterialIds={flaggedMaterialIds}
+                onFlagMaterial={handleFlagMaterial}
+                getMaterialEditorName={getMaterialEditorName}
+                onOpenDetails={openMaterialDetails}
+                onReplaceMaterial={handleReplaceMaterialClick}
+                isReplacingMaterial={isReplacingMaterial}
+                replacingMaterialId={materialToReplace?.id || null}
+                canUploadMaterials={false}
+                canManageFolders={false}
+                canReplaceMaterials={false}
+                onDownloadMaterial={async (material) => {
+                  const { data, error } = await materialQueries.getApprovedMaterialDownloadUrl(material)
+                  if (error) {
+                    setActionMessage(error)
+                    return
+                  }
+                  window.open(data.url, '_blank', 'noopener,noreferrer')
+                }}
+                uploadManager={{
+                  enabled: false,
+                  form: uploadForm,
+                  fileName: uploadFile?.name || '',
+                  campaigns: uploadCampaigns,
+                  folders,
+                  onNameChange: (value) => setUploadForm((prev) => ({ ...prev, name: value })),
+                  onCampaignChange: (value) => setUploadForm((prev) => ({
+                    ...prev,
+                    campaignId: value,
+                    folderId: prev.folderId && !folders.some((folder) => folder.id === prev.folderId && (!value || !folder.campaign_id || folder.campaign_id === value)) ? '' : prev.folderId,
+                  })),
+                  onFolderChange: (value) => setUploadForm((prev) => ({ ...prev, folderId: value })),
+                  onFileChange: () => {},
+                  onSubmit: () => {},
+                  onReset: resetUploadForm,
+                }}
+                folderManager={{
+                  enabled: false,
+                  newFolderName,
+                  onNewFolderNameChange: setNewFolderName,
+                  newFolderCampaignId,
+                  onNewFolderCampaignIdChange: setNewFolderCampaignId,
+                  campaigns: uploadCampaigns,
+                  folders,
+                  onCreateFolder: () => {},
+                }}
+              />
             )
 
           default:
             return null
         }
       }}
-    </DashboardTemplate>
+      </DashboardTemplate>
+
+      {selectedMaterial && (
+        <div className={campaignStyles.modalBackdrop} onClick={() => setSelectedMaterial(null)}>
+          <div className={campaignStyles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div className={campaignStyles.cardHeader}>
+              <h3>{selectedMaterial.name || 'Material details'}</h3>
+              <button type="button" className={campaignStyles.pageBtn} onClick={() => setSelectedMaterial(null)}>Close</button>
+            </div>
+            <p className={campaignStyles.rowMeta}>ID: {selectedMaterial.id}</p>
+            <p className={campaignStyles.rowMeta}>Status: <strong>{selectedMaterial.status || 'Unknown'}</strong></p>
+            <p className={campaignStyles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
+            <p className={campaignStyles.rowMeta}>Folder: {selectedMaterial.folder?.name || 'No folder'}</p>
+            <p className={campaignStyles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
+            <div className={campaignStyles.materialCardActions}>
+              <button
+                type="button"
+                className={`${campaignStyles.flagIconBtn} ${flaggedMaterialIds.has(selectedMaterial.id) ? campaignStyles.flagIconBtnActive : ''}`}
+                onClick={() => handleFlagMaterial(selectedMaterial)}
+                title={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
+                aria-label={flaggedMaterialIds.has(selectedMaterial.id) ? 'Flagged for compliance review' : 'Flag for compliance review'}
+              >
+                <FlagIcon size={16} active={flaggedMaterialIds.has(selectedMaterial.id)} />
+              </button>
+            </div>
+            <h4 style={{ margin: '12px 0 6px' }}>Timeline</h4>
+            <div className={campaignStyles.timelineList}>
+              {buildMaterialTimeline(selectedMaterial).map((entry) => (
+                <div key={entry.id} className={campaignStyles.timelineItem}>
+                  <span className={campaignStyles.timelineDot}></span>
+                  <div>
+                    <strong>{entry.label}</strong>
+                    <p className={campaignStyles.rowMeta}>By {entry.by}</p>
+                    <p className={campaignStyles.rowMeta}>{new Date(entry.at).toLocaleString('en-GB')}</p>
+                  </div>
+                </div>
+              ))}
+              {buildMaterialTimeline(selectedMaterial).length === 0 && (
+                <p className={campaignStyles.rowMeta}>No timeline events available.</p>
+              )}
+            </div>
+            <h4 style={{ margin: '14px 0 6px' }}>Version History</h4>
+            <div className={campaignStyles.timelineList}>
+              {loadingMaterialVersions && <p className={campaignStyles.rowMeta}>Loading versions...</p>}
+              {!loadingMaterialVersions && materialVersions.map((version) => (
+                <div key={version.id} className={campaignStyles.timelineItem}>
+                  <span className={campaignStyles.timelineDot}></span>
+                  <div>
+                    <strong>Version {version.version_number}</strong>
+                    <p className={campaignStyles.rowMeta}>{version.file_type || 'file'} uploaded by {version.uploader?.full_name || version.uploader?.email || 'Unknown user'}</p>
+                    <p className={campaignStyles.rowMeta}>{version.created_at ? new Date(version.created_at).toLocaleString('en-GB') : 'No timestamp'}</p>
+                    {version.change_reason && <p className={campaignStyles.rowMeta}>Reason: {version.change_reason}</p>}
+                    <button
+                      type="button"
+                      className={campaignStyles.linkBtn}
+                      onClick={() => handleDownloadMaterialVersion(version)}
+                      disabled={downloadingVersionId === version.id}
+                    >
+                      {downloadingVersionId === version.id ? 'Preparing download...' : 'Download'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {!loadingMaterialVersions && materialVersions.length === 0 && (
+                <p className={campaignStyles.rowMeta}>No versions captured yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <FlagMaterialModal
+        isOpen={Boolean(flaggingMaterial)}
+        material={flaggingMaterial}
+        onClose={() => setFlaggingMaterial(null)}
+        onSubmit={submitFlagForMaterial}
+      />
+    </>
   )
 }
