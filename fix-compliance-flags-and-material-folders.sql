@@ -4,6 +4,8 @@
 ALTER TABLE materials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE compliance_flags ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Operational roles can insert materials" ON materials;
+
 -- 1) Ensure materials can be created by operational roles
 DO $$
 BEGIN
@@ -18,7 +20,7 @@ BEGIN
       FOR INSERT TO authenticated
       WITH CHECK (
         uploaded_by = auth.uid() AND
-        (SELECT role FROM profiles WHERE id = auth.uid()) IN ('marketing_sales', 'campaign_management', 'liaison_officer', 'compliance_reviewer', 'admin')
+        (SELECT role FROM profiles WHERE id = auth.uid()) IN ('marketing_sales', 'campaign_management', 'compliance_reviewer', 'admin')
       );
   END IF;
 
@@ -44,6 +46,19 @@ $$;
 -- 2) Ensure compliance flags can be created and updated
 DO $$
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'compliance_flags'
+      AND policyname = 'Operational roles can view flags'
+  ) THEN
+    CREATE POLICY "Operational roles can view flags" ON compliance_flags
+      FOR SELECT USING (
+        (SELECT role FROM profiles WHERE id = auth.uid()) IN ('marketing_sales', 'campaign_management', 'liaison_officer', 'compliance_reviewer', 'admin')
+      );
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM pg_policies

@@ -206,6 +206,7 @@ Logs all HCP interactions, emails, calls, and visits.
 CREATE TABLE interactions (
   id UUID PRIMARY KEY DEFAULT GEN_RANDOM_UUID(),
   hcp_id UUID REFERENCES hcp_contacts(id),
+  campaign_id TEXT REFERENCES campaigns(id),
   initiated_by UUID REFERENCES profiles(id),
   interaction_type TEXT CHECK (interaction_type IN ('Call', 'Email', 'Visit', 'Meeting', 'Other')),
   product_mentioned TEXT,
@@ -470,6 +471,7 @@ CREATE INDEX idx_submissions_reviewer ON submissions(reviewer_id);
 CREATE INDEX idx_hcp_specialism ON hcp_contacts(specialism);
 CREATE INDEX idx_interactions_type ON interactions(interaction_type);
 CREATE INDEX idx_interactions_date ON interactions(interaction_date);
+CREATE INDEX idx_interactions_campaign ON interactions(campaign_id);
 
 -- Liaison officer visits
 CREATE INDEX idx_visits_date ON visits(visit_date);

@@ -207,6 +207,7 @@ CREATE POLICY "Marketing team can insert HCPs" ON hcp_contacts
 CREATE TABLE IF NOT EXISTS interactions (
   id UUID PRIMARY KEY DEFAULT GEN_RANDOM_UUID(),
   hcp_id UUID REFERENCES hcp_contacts(id),
+  campaign_id TEXT REFERENCES campaigns(id),
   initiated_by UUID REFERENCES profiles(id),
   interaction_type TEXT NOT NULL CHECK (interaction_type IN ('Call', 'Email', 'Visit', 'Meeting', 'Other')),
   product_mentioned TEXT,
@@ -395,6 +396,7 @@ CREATE INDEX IF NOT EXISTS idx_submissions_reviewer ON submissions(reviewer_id);
 CREATE INDEX IF NOT EXISTS idx_hcp_specialism ON hcp_contacts(specialism);
 CREATE INDEX IF NOT EXISTS idx_interactions_type ON interactions(interaction_type);
 CREATE INDEX IF NOT EXISTS idx_interactions_date ON interactions(interaction_date DESC);
+CREATE INDEX IF NOT EXISTS idx_interactions_campaign ON interactions(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_visits_date ON visits(visit_date DESC);
 CREATE INDEX IF NOT EXISTS idx_visits_liaison ON visits(liaison_officer_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to);
