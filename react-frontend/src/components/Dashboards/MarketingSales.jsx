@@ -34,15 +34,6 @@ const BinIcon = ({ size = 18 }) => (
 
 
 export default function MarketingSales() {
-    // --- Placeholder implementations for missing helpers ---
-    // TODO: Replace with real logic as needed
-    const loadRecentActivity = async () => {};
-    const appendLocalActivity = (type, title, detail) => {};
-    const handleDeleteTask = (taskId) => {};
-    const handleUploadFileChange = (e) => {};
-    const handleSubmitUpload = (e) => {};
-    const resetUploadForm = () => {};
-    const handleCreateFolder = () => {};
   // All hooks/state
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,8 +57,11 @@ export default function MarketingSales() {
   const [currentCrmPage, setCurrentCrmPage] = useState(1);
   const [interactionHcpId, setInteractionHcpId] = useState('');
   const [interactionCampaignId, setInteractionCampaignId] = useState('');
+  const [interactionMaterialId, setInteractionMaterialId] = useState('');
   const [interactionType, setInteractionType] = useState('Call');
   const [interactionNotes, setInteractionNotes] = useState('');
+  const [interactionHistory, setInteractionHistory] = useState([]);
+  const [isLoadingInteractionHistory, setIsLoadingInteractionHistory] = useState(false);
   const [recentActivities, setRecentActivities] = useState([]);
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -91,7 +85,7 @@ export default function MarketingSales() {
   const [folders, setFolders] = useState([]);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderCampaignId, setNewFolderCampaignId] = useState('');
-  const [uploadForm, setUploadForm] = useState({ campaignId: '', folderId: '', name: '' });
+  const [uploadForm, setUploadForm] = useState({ campaignId: '', folderId: '', name: '', notes: '' });
   const [materialToReplace, setMaterialToReplace] = useState(null);
   const [isReplacingMaterial, setIsReplacingMaterial] = useState(false);
   const [taskForm, setTaskForm] = useState({ title: '', description: '', due_date: '', priority: 'Medium' });
@@ -253,10 +247,8 @@ const buildMaterialTimeline = (material) => {
       return
     }
     setCampaigns(data || [])
-    if (!interactionCampaignId && data?.length) {
-      setInteractionCampaignId(data[0].id)
-    }
-  }, [interactionCampaignId])
+    setInteractionCampaignId((current) => current || data?.[0]?.id || '')
+  }, [])
 
   const loadMaterials = useCallback(async () => {
     const [materialsResult, foldersResult, flagsResult] = await Promise.all([
@@ -304,6 +296,29 @@ const buildMaterialTimeline = (material) => {
     setIsLoadingCrm(false)
   }, [])
 
+  const loadInteractionHistory = useCallback(async (hcpId) => {
+    if (!hcpId) {
+      setInteractionHistory([])
+      return
+    }
+
+    setIsLoadingInteractionHistory(true)
+    const data = await hcpQueries.getInteractionHistory(hcpId)
+    const mapped = Array.isArray(data)
+      ? data.map((row) => ({
+        id: row.id,
+        interactionType: row.interaction_type || 'Other',
+        campaignId: row.campaign_id || null,
+        notes: row.notes || 'No notes provided.',
+        interactionDate: row.interaction_date,
+        loggedBy: row.initiated_by?.full_name || 'Team member',
+      }))
+      : []
+
+    setInteractionHistory(mapped)
+    setIsLoadingInteractionHistory(false)
+  }, [])
+
   const loadTasks = useCallback(async () => {
     setIsLoadingTasks(true)
     const { data, error } = await taskQueries.getCurrentUserTasks()
@@ -331,6 +346,133 @@ const buildMaterialTimeline = (material) => {
     setTasks(mappedTasks)
     setIsLoadingTasks(false)
   }, [])
+
+  const loadRecentActivity = useCallback(async () => {
+    const data = await auditQueries.getActivityLogs(user?.id ? { userId: user.id } : {})
+    const mapped = (data || []).map((entry) => ({
+      id: `audit-${entry.id || `${entry.timestamp}-${entry.action}`}`,
+      type: mapAuditType(entry),
+      title: (entry.action || 'Activity logged').replace(/_/g, ' '),
+      detail: `${entry.resource_type || 'system'} • ${getRelativeTime(entry.timestamp)}`,
+      timestamp: entry.timestamp || new Date().toISOString(),
+    }))
+    setRecentActivities(mapped)
+  }, [user?.id])
+
+  const appendLocalActivity = useCallback((type, title, detail) => {
+    setRecentActivities((prev) => [{
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type,
+      title,
+      detail,
+      timestamp: new Date().toISOString(),
+    }, ...prev].slice(0, 25))
+  }, [])
+
+  const handleDeleteTask = useCallback(async (taskId) => {
+    setIsDeletingTask(true)
+    const { error } = await taskQueries.deleteTask(taskId)
+    if (error) {
+      setActionMessage(`Failed to delete task: ${error}`)
+      setIsDeletingTask(false)
+      return
+    }
+
+    setTasks((prev) => prev.filter((task) => task.id !== taskId))
+    setDeleteConfirmTaskId(null)
+    appendLocalActivity('task', 'Task deleted', `Task ${taskId} removed from board`)
+    await loadRecentActivity()
+    setActionMessage('Task deleted.')
+    setIsDeletingTask(false)
+  }, [appendLocalActivity, loadRecentActivity])
+
+  const handleUploadFileChange = useCallback((event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setUploadFile(file)
+    setUploadForm((prev) => ({
+      ...prev,
+      name: prev.name || file.name,
+    }))
+  }, [])
+
+  const resetUploadForm = useCallback(() => {
+    setUploadForm({ campaignId: '', folderId: '', name: '', notes: '' })
+    setUploadFile(null)
+  }, [])
+
+  const handleSubmitUpload = useCallback(async () => {
+    if (!uploadFile) {
+      setActionMessage('Please select a file.')
+      return
+    }
+
+    if (!uploadForm.name.trim()) {
+      setActionMessage('Please enter a material name.')
+      return
+    }
+
+    setIsUploading(true)
+    setActionMessage('Uploading material...')
+
+    const { error } = await materialQueries.submitMaterial(
+      uploadForm.campaignId || null,
+      {
+        name: uploadForm.name.trim(),
+        description: uploadForm.notes.trim() || 'Uploaded from Sales & Marketing dashboard',
+        folder_id: uploadForm.folderId || null,
+      },
+      uploadFile
+    )
+
+    if (error) {
+      setActionMessage(`Upload failed: ${error}`)
+      setIsUploading(false)
+      return
+    }
+
+    setActionMessage(`${uploadForm.name.trim()} uploaded successfully.`)
+    resetUploadForm()
+    await loadMaterials()
+    await loadRecentActivity()
+    setIsUploading(false)
+  }, [uploadFile, uploadForm, resetUploadForm, loadMaterials, loadRecentActivity])
+
+  const handleCreateFolder = useCallback(async () => {
+    const trimmedName = newFolderName.trim()
+    if (!trimmedName) {
+      setActionMessage('Folder name is required.')
+      return
+    }
+
+    const { error } = await folderQueries.createFolder({
+      name: trimmedName,
+      campaignId: newFolderCampaignId || null,
+    })
+
+    if (error) {
+      setActionMessage(`Folder creation failed: ${error}`)
+      return
+    }
+
+    setActionMessage(`Folder "${trimmedName}" created.`)
+    setNewFolderName('')
+    setNewFolderCampaignId('')
+    await loadMaterials()
+  }, [newFolderName, newFolderCampaignId, loadMaterials])
+
+  useEffect(() => {
+    loadCampaigns()
+    loadMaterials()
+    loadCrm()
+    loadTasks()
+    loadRecentActivity()
+  }, [loadCampaigns, loadMaterials, loadCrm, loadTasks, loadRecentActivity])
+
+  useEffect(() => {
+    loadInteractionHistory(interactionHcpId)
+  }, [interactionHcpId, loadInteractionHistory])
 
   const openAddHcpModal = () => {
     setEditingHcpId(null)
@@ -434,10 +576,19 @@ const buildMaterialTimeline = (material) => {
     }
 
     const selected = hcpList.find((hcp) => String(hcp.id) === String(interactionHcpId))
+    const selectedDocument = approvedMaterials.find((material) => String(material.id) === String(interactionMaterialId))
+    const noteParts = []
+    if (interactionNotes.trim()) {
+      noteParts.push(interactionNotes.trim())
+    }
+    if (selectedDocument) {
+      noteParts.push(`Linked document: ${selectedDocument.name}`)
+    }
+
     const { error } = await hcpQueries.logInteraction(interactionHcpId, {
       interaction_type: interactionType,
       campaign_id: interactionCampaignId || null,
-      notes: interactionNotes || 'No notes provided',
+      notes: noteParts.length > 0 ? noteParts.join('\n\n') : 'No notes provided',
     })
 
     if (error) {
@@ -447,10 +598,12 @@ const buildMaterialTimeline = (material) => {
 
     appendLocalActivity('email', `Interaction logged${selected?.name ? ` with ${selected.name}` : ''}`, `${interactionType} • ${getRelativeTime(new Date().toISOString())}`)
     setInteractionNotes('')
+    setInteractionMaterialId('')
     setActionMessage('Interaction logged successfully.')
     if (fromQuickAction) {
       setIsInteractionModalOpen(false)
     }
+    await loadInteractionHistory(interactionHcpId)
     await loadCrm()
     await loadRecentActivity()
   }
@@ -737,7 +890,10 @@ const buildMaterialTimeline = (material) => {
   }, [currentCrmPage, totalCrmPages])
 
   const approvedMaterials = useMemo(
-    () => materials.filter((row) => String(row.status || '').toLowerCase() === 'approved'),
+    () => materials.filter((row) => {
+      const normalizedStatus = String(row.status || '').trim().toLowerCase()
+      return normalizedStatus === 'approved' || normalizedStatus.includes('approved')
+    }),
     [materials]
   )
 
@@ -783,19 +939,10 @@ const buildMaterialTimeline = (material) => {
     tasks.map((task) => task.relatedCampaignId).filter(Boolean)
   ), [tasks])
 
-  const responsibleActiveCampaigns = useMemo(() => {
-    if (!user?.id || responsibleCampaignIds.size === 0) {
-      return []
-    }
-
-    return campaigns.filter((campaign) => (
-      String(campaign.status || '').toLowerCase() === 'active' &&
-      responsibleCampaignIds.has(campaign.id)
-    ))
-  }, [campaigns, responsibleCampaignIds, user?.id])
+  const responsibleCampaigns = useMemo(() => campaigns, [campaigns])
 
   const campaignCards = useMemo(() => {
-    return responsibleActiveCampaigns.map((campaign) => {
+    return responsibleCampaigns.map((campaign) => {
       const linkedMaterials = approvedMaterials.filter((material) => (
         material.campaign?.id === campaign.id ||
         (!material.campaign?.id && material.campaign?.name === campaign.name)
@@ -826,7 +973,7 @@ const buildMaterialTimeline = (material) => {
         normalizedStatus,
       }
     })
-  }, [approvedMaterials, responsibleActiveCampaigns])
+  }, [approvedMaterials, responsibleCampaigns])
 
   const filteredCampaignCards = useMemo(() => {
     const query = campaignSearch.trim().toLowerCase()
@@ -1245,6 +1392,12 @@ const buildMaterialTimeline = (material) => {
                       <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
                     ))}
                   </select>
+                  <select className={styles.formInput} value={interactionMaterialId} onChange={(e) => setInteractionMaterialId(e.target.value)}>
+                    <option value="">No document attached</option>
+                    {approvedMaterials.map((material) => (
+                      <option key={material.id} value={material.id}>{material.name}</option>
+                    ))}
+                  </select>
                   <textarea
                     placeholder="Interaction Notes"
                     className={styles.formTextarea}
@@ -1252,6 +1405,31 @@ const buildMaterialTimeline = (material) => {
                     onChange={(e) => setInteractionNotes(e.target.value)}
                   ></textarea>
                   <button type="button" className={styles.submitBtn} onClick={(event) => handleLogInteraction(event, false)}>Log Interaction</button>
+                </div>
+
+                <div className={styles.interactionHistoryPanel}>
+                  <div className={styles.interactionHistoryHeader}>
+                    <h3>Recent Interaction Notes</h3>
+                    <span className={styles.small}>{interactionHistory.length} record{interactionHistory.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {isLoadingInteractionHistory && <p className={styles.small}>Loading interaction history...</p>}
+                  {!isLoadingInteractionHistory && interactionHistory.length === 0 && (
+                    <p className={styles.small}>No interactions logged yet for this HCP.</p>
+                  )}
+                  {!isLoadingInteractionHistory && interactionHistory.map((entry) => {
+                    const linkedCampaign = campaigns.find((campaign) => String(campaign.id) === String(entry.campaignId))
+                    return (
+                      <div key={entry.id} className={styles.interactionHistoryItem}>
+                        <p>
+                          <strong>{entry.interactionType}</strong>
+                          {' • '}
+                          {entry.interactionDate ? new Date(entry.interactionDate).toLocaleString('en-GB') : 'No timestamp'}
+                        </p>
+                        <p className={styles.activityMeta}>Campaign: {linkedCampaign?.name || 'No campaign tag'} • Logged by: {entry.loggedBy}</p>
+                        <p className={styles.interactionHistoryNotes}>{entry.notes}</p>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )
@@ -1594,6 +1772,7 @@ const buildMaterialTimeline = (material) => {
                   campaigns: uploadCampaigns,
                   folders,
                   onNameChange: (value) => setUploadForm((prev) => ({ ...prev, name: value })),
+                  onNotesChange: (value) => setUploadForm((prev) => ({ ...prev, notes: value })),
                   onCampaignChange: (value) => setUploadForm((prev) => ({
                     ...prev,
                     campaignId: value,
@@ -1683,6 +1862,7 @@ const buildMaterialTimeline = (material) => {
             <p className={campaignStyles.rowMeta}>Status: <strong>{selectedMaterial.status || 'Unknown'}</strong></p>
             <p className={campaignStyles.rowMeta}>Campaign: {selectedMaterial.campaign?.name || 'Unassigned'}</p>
             <p className={campaignStyles.rowMeta}>Folder: {selectedMaterial.folder?.name || 'No folder'}</p>
+            <p className={campaignStyles.rowMeta}>Notes: {selectedMaterial.description || 'No notes added.'}</p>
             <p className={campaignStyles.rowMeta}>Last edited by: {getMaterialEditorName(selectedMaterial)}</p>
             <div className={campaignStyles.materialCardActions}>
               <button
@@ -1778,6 +1958,12 @@ const buildMaterialTimeline = (material) => {
                 <option value="">No campaign tag</option>
                 {campaigns.map((campaign) => (
                   <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
+                ))}
+              </select>
+              <select className={styles.formInput} value={interactionMaterialId} onChange={(event) => setInteractionMaterialId(event.target.value)}>
+                <option value="">No document attached</option>
+                {approvedMaterials.map((material) => (
+                  <option key={material.id} value={material.id}>{material.name}</option>
                 ))}
               </select>
               <textarea

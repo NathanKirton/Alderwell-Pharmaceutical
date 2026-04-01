@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import campaignStyles from '../CampaignManagement.module.css'
 import styles from './MaterialsLibrary.module.css'
 import { FlagIcon, PlusIcon } from '../../Icons/IconSet'
@@ -68,6 +68,7 @@ export default function MaterialsLibrary({
 }) {
   const [showUploadPanel, setShowUploadPanel] = useState(false)
   const [showFolderPanel, setShowFolderPanel] = useState(false)
+  const managedUploadInputRef = useRef(null)
 
   const approvedCount = useMemo(
     () => materials.filter((material) => String(material.status || '').trim().toLowerCase() === 'approved').length,
@@ -174,6 +175,19 @@ export default function MaterialsLibrary({
                     />
                   </div>
 
+                  {typeof uploadManager.onNotesChange === 'function' && (
+                    <div className={`${campaignStyles.formField} ${campaignStyles.formFieldFull}`}>
+                      <label className={campaignStyles.formLabel}>Document Notes</label>
+                      <textarea
+                        className={campaignStyles.formInput}
+                        value={uploadManager.form?.notes || ''}
+                        onChange={(event) => uploadManager.onNotesChange(event.target.value)}
+                        placeholder="Add context for reviewers and field teams..."
+                        rows={3}
+                      />
+                    </div>
+                  )}
+
                   <div className={campaignStyles.formField}>
                     <label className={campaignStyles.formLabel}>Campaign</label>
                     <select
@@ -204,7 +218,36 @@ export default function MaterialsLibrary({
 
                   <div className={campaignStyles.formField}>
                     <label className={campaignStyles.formLabel}>File</label>
-                    <input className={campaignStyles.formInput} type="file" onChange={uploadManager.onFileChange} />
+                    <div className={styles.filePickerRow}>
+                      <span
+                        className={styles.filePickerNameClickable}
+                        onClick={() => {
+                          if (managedUploadInputRef.current) {
+                            managedUploadInputRef.current.value = ''
+                            managedUploadInputRef.current.click()
+                          }
+                        }}
+                        role="button"
+                        tabIndex="0"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            if (managedUploadInputRef.current) {
+                              managedUploadInputRef.current.value = ''
+                              managedUploadInputRef.current.click()
+                            }
+                          }
+                        }}
+                      >
+                        {uploadManager.fileName || 'Click to select file'}
+                      </span>
+                      <input
+                        ref={managedUploadInputRef}
+                        type="file"
+                        hidden
+                        onChange={uploadManager.onFileChange}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -408,6 +451,7 @@ export default function MaterialsLibrary({
                 <div className={styles.metaList}>
                   <p className={campaignStyles.rowMeta}><span className={styles.metaLabel}>Campaign:</span> {material.campaign?.name || 'Unassigned'}</p>
                   <p className={campaignStyles.rowMeta}><span className={styles.metaLabel}>Folder:</span> {material.folder?.name || 'No folder'}</p>
+                  {material.description && <p className={campaignStyles.rowMeta}><span className={styles.metaLabel}>Notes:</span> {material.description}</p>}
                   <p className={campaignStyles.rowMeta}><span className={styles.metaLabel}>Updated:</span> {material.updated_at ? new Date(material.updated_at).toLocaleString('en-GB') : 'N/A'}</p>
                   <p className={campaignStyles.rowMeta}><span className={styles.metaLabel}>Last edited by:</span> {getMaterialEditorName(material)}</p>
                 </div>

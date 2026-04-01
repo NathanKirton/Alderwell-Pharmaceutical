@@ -165,8 +165,10 @@ export default function CampaignManagement() {
   const [selectedMaterial, setSelectedMaterial] = useState(null)
   const [materialToReplace, setMaterialToReplace] = useState(null)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
-  const [uploadForm, setUploadForm] = useState({ campaignId: '', folderId: '', name: '' })
+  const [uploadForm, setUploadForm] = useState({ campaignId: '', folderId: '', name: '', notes: '' })
   const [uploadFile, setUploadFile] = useState(null)
+  const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false)
+  const [replaceFile, setReplaceFile] = useState(null)
   const [launchOverrideModal, setLaunchOverrideModal] = useState({
     isOpen: false,
     reason: '',
@@ -622,7 +624,7 @@ export default function CampaignManagement() {
 
   // ─── Upload modal ─────────────────────────────────────────────────────
   const openUploadModal = (preselectedCampaignId = '') => {
-    setUploadForm({ campaignId: preselectedCampaignId, folderId: '', name: '' })
+    setUploadForm({ campaignId: preselectedCampaignId, folderId: '', name: '', notes: '' })
     setUploadFile(null)
     setIsUploadModalOpen(true)
   }
@@ -643,7 +645,7 @@ export default function CampaignManagement() {
       uploadForm.campaignId || null,
       {
         name: uploadForm.name.trim(),
-        description: 'Uploaded from Campaign Management',
+        description: uploadForm.notes.trim() || 'Uploaded from Campaign Management',
         folder_id: uploadForm.folderId || null,
       },
       uploadFile
@@ -659,7 +661,7 @@ export default function CampaignManagement() {
   }
 
   const resetUploadForm = () => {
-    setUploadForm({ campaignId: '', folderId: '', name: '' })
+    setUploadForm({ campaignId: '', folderId: '', name: '', notes: '' })
     setUploadFile(null)
   }
 
@@ -706,15 +708,20 @@ export default function CampaignManagement() {
   // ─── Replace file ─────────────────────────────────────────────────────
   const handleReplaceMaterialClick = (material) => {
     setMaterialToReplace(material)
-    replaceInputRef.current?.click()
+    setReplaceFile(null)
+    setIsReplaceModalOpen(true)
   }
 
-  const handleReplaceFileSelected = async (e) => {
+  const handleReplaceFileSelected = (e) => {
     const file = e.target.files?.[0]
-    if (!file || !materialToReplace) { e.target.value = ''; return }
+    setReplaceFile(file || null)
+  }
+
+  const handleSubmitReplace = async () => {
+    if (!replaceFile || !materialToReplace) return
     setIsReplacingMaterial(true)
     setActionMessage(`Replacing file for ${materialToReplace.name}...`)
-    const { data, error } = await materialQueries.replaceMaterialFile(materialToReplace.id, file)
+    const { data, error } = await materialQueries.replaceMaterialFile(materialToReplace.id, replaceFile)
     if (error) {
       setActionMessage(`Replace failed: ${error}`)
     } else {
@@ -723,8 +730,9 @@ export default function CampaignManagement() {
       await loadAll()
     }
     setMaterialToReplace(null)
+    setReplaceFile(null)
     setIsReplacingMaterial(false)
-    e.target.value = ''
+    setIsReplaceModalOpen(false)
   }
 
   const handleFlagMaterial = async (material) => {
@@ -1197,8 +1205,6 @@ export default function CampaignManagement() {
                   tabClassName={styles.tabContent}
                   actionMessage={actionMessage}
                   actionMessageClassName={styles.rowMeta}
-                  replaceInputRef={replaceInputRef}
-                  onReplaceChange={handleReplaceFileSelected}
                   uploadButtonLabel="Upload Material"
                   isUploading={isUploading}
                   materials={materials}
@@ -1237,6 +1243,7 @@ export default function CampaignManagement() {
                     campaigns,
                     folders,
                     onNameChange: (value) => setUploadForm((prev) => ({ ...prev, name: value })),
+                    onNotesChange: (value) => setUploadForm((prev) => ({ ...prev, notes: value })),
                     onCampaignChange: (value) => setUploadForm((prev) => ({
                       ...prev,
                       campaignId: value,
@@ -1725,7 +1732,20 @@ export default function CampaignManagement() {
             <div className={styles.formGrid}>
               <div className={`${styles.formField} ${styles.formFieldFull}`}>
                 <label className={styles.formLabel}>File</label>
-                <input type="file" onChange={handleUploadFileChange} style={{ padding: '8px 0' }} />
+                <button
+                  type="button"
+                  className={styles.pageBtn}
+                  onClick={() => document.getElementById('campaignUploadFileInput').click()}
+                  style={{ marginBottom: '8px' }}
+                >
+                  Choose File
+                </button>
+                <input
+                  id="campaignUploadFileInput"
+                  type="file"
+                  hidden
+                  onChange={handleUploadFileChange}
+                />
                 {uploadFile && <p className={styles.rowMeta}>Selected: {uploadFile.name}</p>}
               </div>
               <div className={`${styles.formField} ${styles.formFieldFull}`}>
@@ -1757,6 +1777,47 @@ export default function CampaignManagement() {
               <button type="button" className={styles.secondaryBtn} onClick={() => setIsUploadModalOpen(false)}>Cancel</button>
               <button type="button" className={styles.primaryBtn} onClick={handleSubmitUpload} disabled={isUploading || !uploadFile}>
                 {isUploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isReplaceModalOpen && materialToReplace && (
+        <div className={styles.modalBackdrop} onClick={() => setIsReplaceModalOpen(false)}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.cardHeader}>
+              <h3>Replace Material</h3>
+              <button type="button" className={styles.pageBtn} onClick={() => setIsReplaceModalOpen(false)}>Close</button>
+            </div>
+            <div className={styles.formGrid}>
+              <div className={`${styles.formField} ${styles.formFieldFull}`}>
+                <label className={styles.formLabel}>Current Material</label>
+                <p className={styles.rowMeta}>{materialToReplace.name}</p>
+              </div>
+              <div className={`${styles.formField} ${styles.formFieldFull}`}>
+                <label className={styles.formLabel}>New File</label>
+                <button
+                  type="button"
+                  className={styles.pageBtn}
+                  onClick={() => document.getElementById('campaignReplaceFileInput').click()}
+                  style={{ marginBottom: '8px' }}
+                >
+                  Choose File
+                </button>
+                <input
+                  id="campaignReplaceFileInput"
+                  type="file"
+                  hidden
+                  onChange={handleReplaceFileSelected}
+                />
+                {replaceFile && <p className={styles.rowMeta}>Selected: {replaceFile.name}</p>}
+              </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <button type="button" className={styles.secondaryBtn} onClick={() => setIsReplaceModalOpen(false)}>Cancel</button>
+              <button type="button" className={styles.primaryBtn} onClick={handleSubmitReplace} disabled={isReplacingMaterial || !replaceFile}>
+                {isReplacingMaterial ? 'Replacing...' : 'Replace'}
               </button>
             </div>
           </div>

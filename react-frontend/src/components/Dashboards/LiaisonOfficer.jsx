@@ -182,7 +182,7 @@ export default function LiaisonOfficer() {
   const [folders, setFolders] = useState([])
   const [newFolderName, setNewFolderName] = useState('')
   const [newFolderCampaignId, setNewFolderCampaignId] = useState('')
-  const [uploadForm, setUploadForm] = useState({ campaignId: '', folderId: '', name: '' })
+  const [uploadForm, setUploadForm] = useState({ campaignId: '', folderId: '', name: '', notes: '' })
   const [flaggedMaterialIds, setFlaggedMaterialIds] = useState(new Set())
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [loadingVisits, setLoadingVisits] = useState(true)
@@ -235,7 +235,7 @@ export default function LiaisonOfficer() {
       uploadForm.campaignId || null,
       {
         name: uploadForm.name.trim(),
-        description: 'Uploaded from Liaison Officer dashboard',
+        description: uploadForm.notes.trim() || 'Uploaded from Liaison Officer dashboard',
         folder_id: uploadForm.folderId || null,
       },
       uploadFile
@@ -245,7 +245,7 @@ export default function LiaisonOfficer() {
       setActionMessage(`Upload failed: ${error}`)
     } else {
       setActionMessage(`${uploadForm.name.trim()} uploaded successfully.`)
-      setUploadForm({ campaignId: '', folderId: '', name: '' })
+      setUploadForm({ campaignId: '', folderId: '', name: '', notes: '' })
       setUploadFile(null)
       await loadMaterials()
     }
@@ -254,7 +254,7 @@ export default function LiaisonOfficer() {
   }
 
   const resetUploadForm = () => {
-    setUploadForm({ campaignId: '', folderId: '', name: '' })
+    setUploadForm({ campaignId: '', folderId: '', name: '', notes: '' })
     setUploadFile(null)
   }
 
@@ -1598,6 +1598,7 @@ export default function LiaisonOfficer() {
                   campaigns: uploadCampaigns,
                   folders,
                   onNameChange: (value) => setUploadForm((prev) => ({ ...prev, name: value })),
+                  onNotesChange: (value) => setUploadForm((prev) => ({ ...prev, notes: value })),
                   onCampaignChange: (value) => setUploadForm((prev) => ({
                     ...prev,
                     campaignId: value,

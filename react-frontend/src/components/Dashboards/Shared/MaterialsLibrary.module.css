@@ -77,6 +77,49 @@
   margin-top: 16px;
 }
 
+.filePickerRow {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-height: 42px;
+}
+
+.filePickerName {
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filePickerNameClickable {
+  color: #1e293b;
+  cursor: pointer;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  overflow: hidden;
+  padding: 8px 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #f1f5f3;
+  border: 1px solid #cbd5d1;
+  border-radius: 6px;
+  flex: 1;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.filePickerNameClickable:hover {
+  background: #e8ede9;
+  color: #0f172a;
+}
+
+.filePickerNameClickable:focus {
+  outline: none;
+  background: #dfe6db;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
 .statCard {
   background: linear-gradient(180deg, #ffffff 0%, #f7faf9 100%);
   border: 1px solid #dbe5e1;

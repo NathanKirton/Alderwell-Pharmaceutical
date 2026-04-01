@@ -508,6 +508,46 @@ h2 {
   background: #1f352a;
 }
 
+.interactionHistoryPanel {
+  background: #ffffff;
+  border: 1.5px solid #e3e8e4;
+  border-radius: 12px;
+  margin-top: 16px;
+  max-width: 600px;
+  padding: 18px;
+}
+
+.interactionHistoryHeader {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.interactionHistoryHeader h3 {
+  margin: 0;
+}
+
+.interactionHistoryItem {
+  border-top: 1px solid #edf1ee;
+  padding: 12px 0;
+}
+
+.interactionHistoryItem:first-of-type {
+  border-top: none;
+  padding-top: 2px;
+}
+
+.interactionHistoryItem p {
+  margin: 0;
+}
+
+.interactionHistoryNotes {
+  color: #334155;
+  margin-top: 6px !important;
+  white-space: pre-wrap;
+}
+
 .secondaryBtn {
   padding: 12px 20px;
   background: #f0f3f1;
