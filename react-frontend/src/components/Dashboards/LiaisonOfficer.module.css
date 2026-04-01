@@ -1,6 +1,7 @@
 .binIconBtn {
-  position: static;
-  margin-right: 14px;
+  position: absolute;
+  top: 6px;
+  right: 6px;
   background: none;
   border: none;
   padding: 0;
@@ -363,8 +364,31 @@
 .tasksToolbar {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 14px;
+}
+
+.tasksHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.addTaskFromBoardBtn {
+  border: none;
+  border-radius: 8px;
+  background: #2e4d3d;
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.addTaskFromBoardBtn:hover {
+  background: #1f352a;
 }
 
 .search {
@@ -403,15 +427,15 @@
 
 .taskBoard {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
 }
 
 .taskColumn {
-  background: #fff;
+  background: white;
   border: 1.5px solid #e3e8e4;
   border-radius: 12px;
-  padding: 16px;
+  padding: 20px;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
@@ -422,15 +446,15 @@
 }
 
 .taskColumn h3 {
-  margin: 0 0 12px 0;
-  color: #2f3e35;
+  margin: 0 0 16px 0;
+  color: #333;
 }
 
 .taskCard {
   background: #f8f9fa;
   border-radius: 8px;
   padding: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   border-left: 4px solid #2e4d3d;
   cursor: grab;
   touch-action: none;
@@ -447,27 +471,21 @@
 }
 
 .taskCard.completed {
-  border-left-color: #98a39d;
-  opacity: 0.7;
-}
-
-.taskCardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
+  border-left-color: #999;
+  opacity: 0.6;
 }
 
 .taskCard p {
-  margin: 0;
-  color: #2f3e35;
-  font-weight: 700;
+  margin: 0 0 4px 0;
+  color: #333;
+  font-weight: 600;
+  padding-right: 26px;
 }
 
 .taskCard small {
   display: block;
-  color: #69766f;
-  font-size: 0.82rem;
+  color: #999;
+  font-size: 0.85rem;
   margin-top: 4px;
 }
 
@@ -647,6 +665,12 @@
     align-items: stretch;
   }
 
+  .tasksHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
   .visitsToolbar {
     max-width: none;
   }
@@ -661,6 +685,10 @@
 
   .toolbarActions {
     justify-content: space-between;
+  }
+
+  .addTaskFromBoardBtn {
+    width: 100%;
   }
 
   .materialsHeader {

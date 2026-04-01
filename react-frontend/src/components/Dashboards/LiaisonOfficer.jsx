@@ -19,6 +19,18 @@ import {
 } from '../Icons/IconSet'
 
 
+const BinIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="6" width="18" height="14" rx="2" />
+    <line x1="9" y1="10" x2="9" y2="16" />
+    <line x1="15" y1="10" x2="15" y2="16" />
+    <line x1="4" y1="6" x2="20" y2="6" />
+    <line x1="10" y1="2" x2="14" y2="2" />
+    <line x1="12" y1="2" x2="12" y2="6" />
+  </svg>
+)
+
+
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -1337,20 +1349,14 @@ export default function LiaisonOfficer() {
             return (
               <div className={styles.tabContent}>
                 {actionMessage && <p className={styles.rowMeta}>{actionMessage}</p>}
-                <div className={styles.pageHeaderRow}>
-                  <div>
-                    <h1>Tasks & Follow-Ups</h1>
-                    <p>Healthcare Liaison Officer Portal</p>
-                  </div>
-                </div>
-
-                <div className={styles.tasksToolbar}>
-                  <input className={styles.search} placeholder="Search tasks" value={taskSearch} onChange={(e) => setTaskSearch(e.target.value)} />
-                  <div className={styles.toolbarActions}>
-                    <label className={styles.fieldLabel} style={{ margin: 0 }}>
+                <div className={styles.tasksHeader}>
+                  <h2>Task Management</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.72rem', color: 'var(--text-muted, #888)', gap: '2px' }}>
                       Assigned To
                       <select
-                        className={styles.input}
+                        className={styles.addTaskFromBoardBtn}
+                        style={{ fontWeight: 400 }}
                         value={assigneeFilter}
                         onChange={(e) => setAssigneeFilter(e.target.value)}
                       >
@@ -1359,10 +1365,16 @@ export default function LiaisonOfficer() {
                         ))}
                       </select>
                     </label>
-                    <button type="button" className={styles.secondaryBtn} onClick={handlePriorityFilter}>Priority: {priorityFilter}</button>
-                    <button type="button" className={styles.primaryBtn} onClick={() => setIsTaskFormOpen((prev) => !prev)}>
+                    <button type="button" className={styles.addTaskFromBoardBtn} onClick={() => setIsTaskFormOpen((prev) => !prev)}>
                       {isTaskFormOpen ? 'Close Task Form' : '+ New Task'}
                     </button>
+                  </div>
+                </div>
+
+                <div className={styles.tasksToolbar}>
+                  <input className={styles.search} placeholder="Search tasks" value={taskSearch} onChange={(e) => setTaskSearch(e.target.value)} />
+                  <div className={styles.toolbarActions}>
+                    <button type="button" className={styles.secondaryBtn} onClick={handlePriorityFilter}>Priority: {priorityFilter}</button>
                   </div>
                 </div>
 
@@ -1462,26 +1474,21 @@ export default function LiaisonOfficer() {
                             onTouchCancel={(e) => { e.preventDefault && e.preventDefault(); handleTaskDragEnd(e); }}
                             style={{ position: 'relative' }}
                           >
-                            <div className={styles.taskCardHeader}>
-                              <p>{task.title}</p>
-                              {/* Move bin icon left of priorityDot for better alignment */}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <button
-                                  type="button"
-                                  aria-label="Delete task"
-                                  className={styles.binIconBtn}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteConfirmTaskId(task.id);
-                                  }}
-                                  disabled={isDeletingTask}
-                                >
-                                  <span className="glyphicon" style={{ color: '#dc2626', fontSize: 15 }}>&#xe020;</span>
-                                </button>
-                                <span className={`${styles.priorityDot} ${styles[task.priority.toLowerCase()]}`}></span>
-                              </div>
-                            </div>
+                            <button
+                              type="button"
+                              aria-label="Delete task"
+                              className={styles.binIconBtn}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleteConfirmTaskId(task.id)
+                              }}
+                              disabled={isDeletingTask}
+                            >
+                              <BinIcon size={18} />
+                            </button>
+                            <p>{task.title}</p>
                             <small>{task.detail}</small>
+                            <small>Priority: {task.priority}</small>
                             <small>Due: {task.due}</small>
                             {/* Confirm popup */}
                             {deleteConfirmTaskId === task.id && (
